@@ -1,0 +1,40 @@
+{
+    "name": "code-signing-software-trust-action",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc && ncc build lib/index.js",
+        "clean": "rimraf lib build dist",
+        "cb": "npm run clean && npm run build",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/digicert/code-signing-software-trust-action.git"
+    },
+    "keywords": [
+        "DigiCert",
+        "actions",
+        "code signing",
+        "Software Trust Manager"
+    ],
+    "author": "DigiCert",
+    "license": "DigiCert",
+    "bugs": {
+        "url": "https://github.com/digicert/code-signing-software-trust-action/issues"
+    },
+    "homepage": "https://github.com/digicert/code-signing-software-trust-action#readme",
+    "description": "Code signing with DigiCert® Software Trust Manager",
+    "devDependencies": {
+        "@types/node": "^24.0.13",
+        "rimraf": "^6.0.1",
+        "typescript": "^5.8.3",
+        "@vercel/ncc": "^0.38.3"
+    },
+    "dependencies": {
+        "@actions/cache": "^4.0.3",
+        "@actions/core": "^1.11.1",
+        "@actions/exec": "^1.1.1",
+        "@actions/tool-cache": "^2.0.2"
+    }
+}

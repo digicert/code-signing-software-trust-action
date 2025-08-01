@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+
+# Sample action yaml files
+# https://github.com/microsoft/action-python/blob/main/action.yml
+name: '<a href="https://www.digicert.com">DigiCert Software Trust Manager</a> simplified signing'
+author: DigiCert
+description: 'Sign your artifacts with STM'
+branding:
+  color: blue
+  icon: check-circle
+inputs:
+  digicert-cdn:
+    description: |
+      DigiCert CDN or STM environment to download the required STM tools.
+      Default https://demo.one.digicert.com
+    default: https://demo.one.digicert.com
+    required: false
+  keypair-alias:
+    description: 'Keypair alias'
+    required: false
+  input:
+    description: 'File or Directory(files) to sign'
+    required: false
+  diegest-alg:
+    description: 'Digest(Hash) algorithm'
+    default: 'SHA-256'
+    required: false
+  fail-fast:
+    description: | 
+      Continue signing all the files even if there are errors in some.
+      Applies only if input is a directory with mulitple supported files.
+    required: false
+    default: 'true'
+  zero-exit-code-on-failure:
+    description: |
+      Return 0 exit code from the process even if there are errors (Not recommended).
+    default: 'false'
+  unsigned:
+    description: Sign only unsigned files.
+    default: 'false'
+    required: false
+  timestamp:
+    description: 'Timestamping'
+    required: false
+    default: 'true'
+  cache-version:
+    description: |
+      Makes use of Github tool cache feature, useful only with self-hosted runners.
+      Change this to make Github runner to download next latest version of the tool.
+      This is not the actual version of the tool but to be only used for caching to avoid redundent downloads.
+    default: '0.0.0'
+    required: false
+  simple-signing-mode: 
+    description: |
+      Setup Software Trust Manager for simplified signing. Only installs smctl.
+    required: false
+    default: 'false'
+  use-github-caching-service:
+    description: |
+      Default tool caching doesn't work on Github runners. So use this to enable
+      Github provided caching service to cache Software Trust Manager tools across runs.
+    required: false
+    default: 'true'
+runs:
+  using: node20
+  main: 'dist/index.js'
+  post-if: success()
