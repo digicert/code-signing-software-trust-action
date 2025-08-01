@@ -11,6 +11,8 @@ Code signing with DigiCert® Software Trust Manager and GitHub Actions is a stre
 
 GitHub Actions automates the installation and configuration of Software Trust client tools, enabling developers to quickly become signing-ready for workflows on [GitHub-hosted runners][github-hosted-runners-ref] and [self-hosted runners][self-hosted-runners-ref].
 
+Additionally, Software Trust with GitHub Actions offers simple signing, which allows users to sign without the need of third-party tools or libraries.
+
 ## Introduction to Software Trust 
 
 Software Trust provides a solution to manage and automate your code signing workflows in a secure way. 
@@ -130,8 +132,7 @@ Review the following variables that you can use to customize your setup:
 
 
 ## Documentation 
-For instructional documentation, visit DigiCert's documentation site and review 
-[GitHub custom action for keypair signing](https://docs.digicert.com/en/software-trust-manager.html).
+For information on Software Trust, visit [DigiCert's documentation site](https://docs.digicert.com/en/software-trust-manager.html).
 
 ## Feedback and issues
 For Technical Support or Sales, [contact DigiCert][digicert-sales-ref].
