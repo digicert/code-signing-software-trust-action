@@ -6,6 +6,7 @@ import { SMCTL } from './tool_setup';
 import { randomFileName, tmpDir } from './utils';
 
 export async function setupLibraries(smtoolsPath: string) {
+    // CBonnell: consider adding error handling in the batch file
     const cspResitryCommands = `
         @REM For ssmcsp-x86
         reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP"
@@ -52,6 +53,7 @@ export async function setupLibraries(smtoolsPath: string) {
 
     await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);
 
+    // CBonnell: Consider using the built-in %SystemRoot% variable here instead of hard-coding the C: drive (will break if system drive isn't C:)
     const system32 = "C:\\Windows\\System32";
     const sysWOW64 = "C:\\Windows\\SysWOW64";
 

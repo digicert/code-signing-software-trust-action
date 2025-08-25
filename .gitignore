@@ -143,3 +143,4 @@ build
 bin
 input
 lib/
+// CBonnell: add "dist/" once CI/CD pipeline is in place

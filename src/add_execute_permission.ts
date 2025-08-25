@@ -10,6 +10,7 @@ export async function chmod(toolPath: string) {
         const stat = await fs.stat(filePath);
         if (stat.isFile()) {
             // 0o755 => rwxr-xr-x (+x for owner, group, others)
+            // CBonnell: what does this do on Windows?
             await fs.chmod(filePath, 0o755);
             core.debug(`Added +x permission to: ${filePath}`);
         }
