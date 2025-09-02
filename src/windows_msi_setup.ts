@@ -25,7 +25,5 @@ export async function installMsi(src: string, callback: archiveExtractCallback) 
     }
 
     await callback(tmpDir);
-    // CBonnell: remove or document why commented out
-    //rmDir(tmpDir);
     return tmpDir;
 }

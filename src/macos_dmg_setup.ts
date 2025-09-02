@@ -13,15 +13,5 @@ export async function extractDmg(dmgFile: string, callback: archiveExtractCallba
 
     await callback(volume);
 
-    // CBonnell: this commented-out code should be removed, or a comment added explaining why it's commented out
-    // core.info(`Unmounting volume ${volume}`)
-    // await exec.getExecOutput(
-    //     "hdiutil", 
-    //     ["detach", volume]
-    // ).then(rv => {
-    //     rmDir(tmpDir);
-    // }).catch(reason => {
-    //     core.warning(`Failed to unmount volume ${volume}`);
-    // });
     return volume;
 }

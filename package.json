@@ -16,11 +16,13 @@
         "DigiCert",
         "actions",
         "code signing",
-        "Software Trust Manager"
+        "Software Trust Manager",
+        "Secure Software Manager",
+        "Signing Manager",
+        "App Security"
     ],
-    "author": "DigiCert",
-    // CBonnell: replace with proper license name
-    "license": "DigiCert",
+    "author": "DigiCert Inc.",
+    "license": "MIT",
     "bugs": {
         "url": "https://github.com/digicert/code-signing-software-trust-action/issues"
     },
@@ -30,7 +32,6 @@
         "@types/node": "^24.0.13",
         "rimraf": "^6.0.1",
         "typescript": "^5.8.3",
-        // CBonnell: create acknowledgements section in README.md for third-party dependencies
         "@vercel/ncc": "^0.38.3"
     },
     "dependencies": {
