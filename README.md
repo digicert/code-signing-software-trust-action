@@ -188,3 +188,7 @@ For Technical Support or Sales, [contact DigiCert][digicert-sales-ref].
 ## Additional information
 
 For more information about centralizing and automating your code signing workflows with Software Trust, contact [Sales](mailto:sales@digicert.com) or visit [DigiCert.com](https://www.digicert.com/software-trust-manager).
+
+## Acknowledgements
+
+This project uses various third-party open-source libraries. For a complete list of dependencies and their licenses, see [LICENSE_ACKNOWLEDGEMENTS.md](LICENSE_ACKNOWLEDGEMENTS.md).
