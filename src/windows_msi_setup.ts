@@ -25,6 +25,5 @@ export async function installMsi(src: string, callback: archiveExtractCallback) 
     }
 
     await callback(tmpDir);
-    //rmDir(tmpDir);
     return tmpDir;
 }

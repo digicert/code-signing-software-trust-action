@@ -16,10 +16,13 @@
         "DigiCert",
         "actions",
         "code signing",
-        "Software Trust Manager"
+        "Software Trust Manager",
+        "Secure Software Manager",
+        "Signing Manager",
+        "App Security"
     ],
-    "author": "DigiCert",
-    "license": "DigiCert",
+    "author": "DigiCert Inc.",
+    "license": "MIT",
     "bugs": {
         "url": "https://github.com/digicert/code-signing-software-trust-action/issues"
     },

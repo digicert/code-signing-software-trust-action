@@ -145,3 +145,5 @@ input
 lib/
 
 .github
+# CBonnell: add "dist/" once CI/CD pipeline is in place
+# anshuman-mor: @TODO - to add dist/ after CI/CD is in place
