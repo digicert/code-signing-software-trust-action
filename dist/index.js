@@ -482,7 +482,7 @@ const smctlMacValues = {
     archived: true,
     archiveType: "DMG" /* ArchiveType.DMG */,
     fName: 'smctl-mac-x64',
-    dlName: 'smctl-mac-x64',
+    dlName: 'smctl-mac-x64.dmg',
 };
 const scdMacValues = {
     name: exports.SCD,
@@ -490,7 +490,7 @@ const scdMacValues = {
     archived: true,
     archiveType: "DMG" /* ArchiveType.DMG */,
     fName: 'ssm-scd-x64',
-    dlName: 'ssm-scd-mac-x64',
+    dlName: 'ssm-scd-x64.dmg',
     toolType: "EXECUTABLE" /* ToolType.EXECUTABLE */,
     versionFlag: "-v",
 };
@@ -500,7 +500,7 @@ const smctkMacValues = {
     archived: true,
     archiveType: "ZIP" /* ArchiveType.ZIP */,
     fName: 'smctk-apple-any',
-    dlName: 'smctk-apple-any',
+    dlName: 'DigiCert SSM Signing Clients.zip',
     toolType: "ARCHIVE" /* ToolType.ARCHIVE */,
 };
 const smpkcs11Values = {
@@ -515,7 +515,7 @@ const smpkcs11MacValues = {
     archived: true,
     archiveType: "DMG" /* ArchiveType.DMG */,
     fName: 'smpkcs11.dylib',
-    dlName: 'smpkcs11-mac-x64',
+    dlName: 'smpkcs11.dylib.dmg',
     needPKCS11Config: true,
 };
 const smctlWindowsX64 = "smctl-win32-x64";
@@ -531,8 +531,8 @@ const scdMacArm64 = "ssm-scd-darwin-arm64";
 const smtoolsWindowsBundle = "smtools-win32-x64";
 const smtoolsLinuxBundle = "smtools-linux-x64";
 const staticToolDefintions = new Map([
-    [smctlWindowsX64, { ...smctlValues, dlName: "smctl-windows-x64", fName: "smctl.exe" }],
-    [smctlLinuxX64, { ...smctlValues, dlName: "smctl-linux-x64", executePermissionRequired: true }],
+    [smctlWindowsX64, { ...smctlValues, dlName: "smctl.exe", fName: "smctl.exe" }],
+    [smctlLinuxX64, { ...smctlValues, dlName: "smctl", executePermissionRequired: true }],
     [smctlMacX64, { ...smctlMacValues }],
     [smctlMacArm64, { ...smctlMacValues }],
     [smpkcs11MacX64, { ...smpkcs11MacValues }],
@@ -606,7 +606,7 @@ function qulifiedToolName(name, os, arch) {
 ;
 function downloadUrl(tool) {
     const cdn = core.getInput('digicert-cdn', { required: true });
-    return `${cdn}/${tool.fName}`;
+    return `${cdn}/${tool.dlName}`;
 }
 ;
 async function postDownload(tool, downlodedFilePath, callback) {
