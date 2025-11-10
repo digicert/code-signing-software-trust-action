@@ -483,6 +483,17 @@ const smctlMacValues = {
     archiveType: "DMG" /* ArchiveType.DMG */,
     fName: 'smctl-mac-x64',
     dlName: 'smctl-mac-x64.dmg',
+    async createSymlink(toolPath) {
+        const sourcePath = path.join(toolPath, 'smctl-mac-x64');
+        const targetPath = path.join(toolPath, exports.SMCTL);
+        core.info(`Creating symlink: ${targetPath} -> ${sourcePath}`);
+        try {
+            await fs.symlink(sourcePath, targetPath);
+        }
+        catch (error) {
+            core.warning(`Failed to create symlink: ${error}`);
+        }
+    },
 };
 const scdMacValues = {
     name: exports.SCD,
@@ -681,6 +692,9 @@ async function cachedSetup(tool) {
         if (tool.executePermissionRequired) {
             await (0, add_execute_permission_1.chmod)(toolPath);
         }
+    }
+    if (tool.createSymlink) {
+        await tool.createSymlink(toolPath);
     }
     if (tool.needPKCS11Config) {
         await writePKCS11ConfigFile(toolPath);

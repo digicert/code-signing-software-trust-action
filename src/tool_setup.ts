@@ -56,6 +56,7 @@ type ToolMetadata = {
     toolPath?: string;
     cacheHitSetup?: (toolPath: string) => void;
     needPKCS11Config?: boolean;
+    createSymlink?: (toolPath: string) => Promise<void>;
 };
 
 const smctlValues = {
@@ -74,6 +75,16 @@ const smctlMacValues = {
     archiveType: ArchiveType.DMG,
     fName: 'smctl-mac-x64',
     dlName: 'smctl-mac-x64.dmg',
+    async createSymlink(toolPath: string) {
+        const sourcePath = path.join(toolPath, 'smctl-mac-x64');
+        const targetPath = path.join(toolPath, SMCTL);
+        core.info(`Creating symlink: ${targetPath} -> ${sourcePath}`);
+        try {
+            await fs.symlink(sourcePath, targetPath);
+        } catch (error) {
+            core.warning(`Failed to create symlink: ${error}`);
+        }
+    },
 }
 
 const scdMacValues: ToolMetadata = {
@@ -284,6 +295,10 @@ async function cachedSetup(tool: ToolMetadata) {
         if (tool.executePermissionRequired) {
             await chmod(toolPath);
         }
+    }
+
+    if (tool.createSymlink) {
+        await tool.createSymlink(toolPath);
     }
 
     if (tool.needPKCS11Config) {
