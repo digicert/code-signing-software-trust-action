@@ -55,6 +55,8 @@ async function chmod(toolPath) {
         const stat = await fs.stat(filePath);
         if (stat.isFile()) {
             // 0o755 => rwxr-xr-x (+x for owner, group, others)
+            // anshuman-mor: This function is controlled via ToolMetadata.executePermissionRequired and not called for !Linux. 
+            // @See: tool_setup.ts
             await fs.chmod(filePath, 0o755);
             core.debug(`Added +x permission to: ${filePath}`);
         }
@@ -319,15 +321,6 @@ async function extractDmg(dmgFile, callback) {
     core.info(`Mounting DMG file ${dmgFile} to volume ${volume}`);
     await exec.getExecOutput("hdiutil", ["attach", dmgFile, "-mountpoint", volume]);
     await callback(volume);
-    // core.info(`Unmounting volume ${volume}`)
-    // await exec.getExecOutput(
-    //     "hdiutil", 
-    //     ["detach", volume]
-    // ).then(rv => {
-    //     rmDir(tmpDir);
-    // }).catch(reason => {
-    //     core.warning(`Failed to unmount volume ${volume}`);
-    // });
     return volume;
 }
 
@@ -903,6 +896,8 @@ const path_1 = __importDefault(__nccwpck_require__(16928));
 const tool_setup_1 = __nccwpck_require__(63082);
 const utils_1 = __nccwpck_require__(69277);
 async function setupLibraries(smtoolsPath) {
+    // CBonnell: consider adding error handling in the batch file
+    // anshuman-mor: Delaying it for now, will relook into error handling later.
     const cspResitryCommands = `
         @REM For ssmcsp-x86
         reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP"
@@ -945,8 +940,8 @@ async function setupLibraries(smtoolsPath) {
     core.info(`Registring KSP and CSP on the system`);
     const smctl = path_1.default.join(smtoolsPath, tool_setup_1.SMCTL);
     await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);
-    const system32 = "C:\\Windows\\System32";
-    const sysWOW64 = "C:\\Windows\\SysWOW64";
+    const system32 = `${process.env['SystemRoot']}\\System32`;
+    const sysWOW64 = `${process.env['SystemRoot']}\\SysWOW64`;
     await fs.copyFile(path_1.default.join(smtoolsPath, 'smksp-x64.dll'), path_1.default.join(system32, 'smksp.dll'));
     await fs.copyFile(path_1.default.join(smtoolsPath, 'smksp-x86.dll'), path_1.default.join(sysWOW64, 'smksp.dll'));
     await fs.copyFile(path_1.default.join(smtoolsPath, 'ssmcsp-x64.dll'), path_1.default.join(system32, 'ssmcsp.dll'));
@@ -1021,7 +1016,6 @@ async function installMsi(src, callback) {
         throw new Error(`Installation of ${src} failed. ${content}`);
     }
     await callback(tmpDir);
-    //rmDir(tmpDir);
     return tmpDir;
 }
 
@@ -1075,7 +1069,6 @@ async function extractZip(path, callback) {
     const tmpDir = (0, utils_1.randomTmpDir)();
     const rv = await tc.extractZip(path, tmpDir);
     await callback(rv);
-    //await rmDir(tmpDir);
     return tmpDir;
 }
 ;
@@ -1083,7 +1076,6 @@ async function extractTar(path, callback) {
     const tmpDir = (0, utils_1.randomTmpDir)();
     const rv = await tc.extractTar(path, tmpDir);
     await callback(rv);
-    //await rmDir(tmpDir);
     return tmpDir;
 }
 ;
