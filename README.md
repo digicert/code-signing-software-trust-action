@@ -8,11 +8,11 @@
 
 # Code signing with DigiCert® Software Trust Manager
 
-Code signing with DigiCert® Software Trust Manager and GitHub Actions is a streamlined, keypair-based signing workflow that improves software security and seamlessly integrates with DevOps processes to sign binaries on **Windows**, **Linux**, and **Mac**.
+Code signing using DigiCert® Software Trust Manager with GitHub Actions is a streamlined, keypair-based signing workflow that improves software security and seamlessly integrates with DevOps processes to sign binaries on **Windows**, **Linux**, and **Mac**.
 
 GitHub Actions automates the installation and configuration of Software Trust client tools, enabling developers to quickly become signing-ready for workflows on [GitHub-hosted runners][github-hosted-runners-ref] and [self-hosted runners][self-hosted-runners-ref].
 
-Additionally, Software Trust with GitHub Actions offers simple signing, which allows users to sign without the need of third-party tools or libraries.
+Additionally, Software Trust with GitHub Actions offers **simple signing**, a mode which allows users to sign without the need of third-party tools or libraries.
 
 ## Introduction to Software Trust
 
@@ -23,7 +23,7 @@ Software Trust provides a solution to manage and automate your code signing work
 - Require multi-factor authentication (MFA) for signing
 - Prevent unauthorized access or misuse of keys and certificates
 - Enforce consistency and compliance of security policies
-- Protect against malware insertion during software releases
+- Protect against the insertion of malware during software releases
 - Expedite remediation by providing an audit history of all actions taken within your account
 
 **Software Trust allows you to securely:**
@@ -35,24 +35,23 @@ Software Trust provides a solution to manage and automate your code signing work
 - Create releases
 - Sign code
 
-## Get started
+## Before you begin
 
-> **💡 Recommendation: Use Simple Signing Mode**
->
-> We **strongly recommend** using `simple-signing-mode: true` for new implementations. This mode:
->
-> - ✅ **Simplifies your workflow** - No need for third-party signing tools (signtool, jarsigner ..) or intermediate libraries (smksp, smpkcs11 ..)
-> - ✅ **Cross-platform support** - Works seamlessly across Windows, Linux, and macOS
-> - ✅ **Unified signing experience** - One consistent approach for all supported file types
-> - ✅ **Future-ready** - Aligned with our strategic direction as we deprecate legacy signing methods
-> - ✅ **Better performance** - Simple signing mode is faster than traditional signing as it eliminates the overhead of intermediate libraries and third-party tool integrations and unnecessary API calls.
-> - ✅ **Further optimization** - Enable `bulk-sign-mode: true` to sign multiple files in a single batch operation, significantly reducing network round trips and improving throughput for large-scale signing (requires account feature enablement - [contact DigiCert][digicert-sales-ref])
->
-> **Why is it disabled by default?**  
-> Simple signing mode is disabled by default to ensure seamless migration from our legacy GitHub Action without breaking existing workflows. However, we encourage all new users to adopt simple signing mode and existing users to migrate when possible.
->
-> **For new users:** Start with simple signing mode from day one.  
-> **For existing users:** Plan to migrate to simple signing mode to take advantage of simplified workflows, improved cross-platform support, and better performance.
+As a best practice, consider enabling simple signing mode for your new implementations. 
+
+Simple signing mode:
+
+- **Simplifies your workflow**: There is no need for third-party signing tools (SignTool, Jarsigner, etc.) or intermediate libraries (smksp, smpkcs11, etc.).
+- **Offers cross-platform support**: This mode works seamlessly across Windows, Linux, and macOS.
+- **Provides a unified signing experience**: There is a single, consistent approach for all supported file types.
+- **Is future ready**: As we deprecate legacy signing methods, this mode is aligned with our strategic direction.
+- **Offers better performance**: Simple signing mode is faster than traditional signing because there is no need for intermediate libraries, third-party tool integrations, or unnecessary API calls.
+- **Supports bulk signing**: You can enable `bulk-sign-mode: true` to sign multiple files in a single batch operation, significantly reducing network round trips and improving throughput for large-scale signing. (To enable this feature, [contact DigiCert][digicert-sales-ref]).
+
+By default, the simple signing mode is disabled to ensure seamless migration from our legacy GitHub Actions without breaking existing workflows. However, we encourage all new users to adopt simple signing and all existing users to migrate when possible.
+
+
+## Get started
 
 ### Step 1: Obtain a DigiCert ONE account
 
@@ -60,11 +59,13 @@ Software Trust is part of the DigiCert® ONE platform, which also includes DigiC
 
 To access Software Trust, you must have a DigiCert ONE account. If you don't have a DigiCert ONE account, you can request a 30-day free trial account from [DigiCert Sales][digicert-sales-ref].
 
-### Step 2: Update YAML file
+### Step 2: Add steps to your workflow YAML file
 
-Copy and paste one of the following steps into your GitHub Actions workflow YAML file to obtain the latest stable version of Software Trust:
+Copy and paste one of the following steps into your GitHub Actions workflow YAML file to obtain the latest stable version of Software Trust. 
 
-**Software Trust with standard features:**
+To learn more about these steps, see [action.yml](action.yml).
+
+**Option 1: Software Trust with standard features:**
 
 ```yaml
 steps:
@@ -82,7 +83,7 @@ steps:
       SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
 ```
 
-**Software Trust with simplified signing:**
+**Option 2: Software Trust with simple signing:**
 
 ```yaml
 steps:
@@ -105,7 +106,6 @@ steps:
       SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
 ```
 
-To learn more about these steps, see [action.yml](action.yml).
 
 ### Step 3: Customize setup (inputs)
 
@@ -115,17 +115,17 @@ Review the following variables that you can use to customize your setup:
 |-                             |-         |-                               |-|
 | `digicert-cdn`               | Optional |<https://pki-downloads.digicert.com/stm/latest>   |The URL for the DigiCert® CDN used to download the required Software Trust tools.|
 | `keypair-alias`              | Optional | Not applicable                               |A keypair alias.|
-| `input`                      | Optional | Not applicable                                 |A file or directory contained supported files to sign.|
+| `input`                      | Optional | Not applicable                                 |A file or directory that contains the supported files to sign.|
 | `digest-alg`                | Optional | SHA-256                        |Digest (hash) algorithm.|
 | `fail-fast`                  | Optional | True                           |Allows signing of all supported files in a directory, even if some files encounter an error. Only applies if the input is a directory with multiple supported files.|
 | `zero-exit-code-on-failure`  | Optional | False                          |Returns an exit code of **0** even if errors occur during execution. (Not recommended.)|
 | `unsigned`                   | Optional | False                          |Signs only unsigned files.|
 | `timestamp`                  | Optional | True                           |Enables or disables timestamping on signed files.|
-| `cache-version`              | Optional | 0.0.0-0                        |Overrides the default [Github tool cache][tool-cache-ref] key to prompt GitHub runners to download the next available version.<br/>This value is used only for caching purposes and does not affect the actual tool version.|
-| `simple-signing-mode`        | Optional | False                          |Installs only **smctl** to enable simplified signing. **Recommended for new implementations** - eliminates the need for third-party signing tools and provides consistent cross-platform support.|
+| `cache-version`              | Optional | 0.0.0-0                        |Overrides the default [Github tool cache][tool-cache-ref] key to prompt GitHub runners to download the next available version.<br/>This value is used only for caching purposes and doesn't affect the actual tool version.|
+| `simple-signing-mode`        | Optional | False                          |Installs **smctl** to enable simplified signing, which eliminates the need for third-party signing tools and provides consistent cross-platform support.|
 | `use-github-caching-service` | Optional | True                           |Enables GitHub’s built-in caching service. This stores Software Trust tools across workflow runs since default tool caching is not supported on GitHub runners.|
-| `use-binary-sha256-checksum` | Optional | True                           |Uses SHA256 checksum from CDN for automatic version detection and caching. When enabled, tools are automatically updated when new versions are released.|
-| `bulk-sign-mode`             | Optional | False                          |Signs multiple files in a single batch operation. Only works with `simple-signing-mode`. **Recommended for high-volume signing** - significantly reduces network round trips and improves throughput compared to sequential simple signing. **Note:** This feature must be enabled for your account. [Contact DigiCert][digicert-sales-ref] to request access.|
+| `use-binary-sha256-checksum` | Optional | True                           |Use the SHA-256 checksum file provided on the CDN to handle caching. This ensures that new versions are automatically downloaded when they are available. If this option is not enabled, the system instead relies on cache-version to determine whether a new download is needed. This workflow functions when cache-version is updated and 'use-github-caching-service' is enabled.|
+| `bulk-sign-mode`             | Optional | False                          |Signs multiple files in a single batch operation; only works with `simple-signing-mode`. This feature must be enabled for your account. [Contact DigiCert][digicert-sales-ref] to request access.|
 
 ### Step 4: Review required environment variables
 
@@ -136,7 +136,7 @@ Review the following variables that you can use to customize your setup:
 |SM_CLIENT_CERT_FILE       |A .p12-format client certificate file generated for the service user from DigiCert® ONE Account Manager.|[Use GitHub Actions secrets][github-secrets-ref]|
 |SM_CLIENT_CERT_PASSWORD   |The password for the encrypted .p12 client certificate file. |[Use GitHub Actions secrets][github-secrets-ref]|
 
-> **Note**: Since the client certificate is downloaded as a .p12 file from the DigiCert® ONE Account Manager, we recommend that you store the file content as a Base64-encoded string in a secret. When you execute, you can decode it into a file using the `base64` command (or an equivalent tool).
+> **Note**: Since the client certificate is downloaded as a .p12 file from the DigiCert® ONE Account Manager, as a best practice you should store the file content as a Base64-encoded string in a secret. When you execute, you can decode it into a file using the `base64` command (or an equivalent tool).
 >
 > Review the following example to generate the certificate file from the Base64 secret:
 >
@@ -157,9 +157,9 @@ The following outputs are provided by this action:
 
 | Name             | Description |
 |------------------|-------------|
-| `PKCS11_CONFIG`  | The absolute path to the PKCS#11 configuration file (`pkc11Properties.cfg`). This file is automatically generated when Software Trust tools are installed and contains the library path to the PKCS#11 module. Use this output in subsequent steps that require PKCS#11 configuration for signing operations with third-party tools. |
+| `PKCS11_CONFIG`  | This is the full path to the PKCS#11 configuration file (`pkc11Properties.cfg`). The file is automatically generated when you install Software Trust tools and includes the library path to the PKCS#11 module. Use the value in the output when configuring PKCS#11 for signing operations with third-party tools. |
 
-**Example usage:**
+**Sample usage:**
 
 ```yaml
 - name: Setup Software Trust Manager
@@ -177,7 +177,7 @@ The following outputs are provided by this action:
     # Use the config file with your signing tool
 ```
 
-## Documentation
+## User guides / documentation 
 
 For information on Software Trust, visit [DigiCert's documentation site](https://docs.digicert.com/en/software-trust-manager.html).
 
