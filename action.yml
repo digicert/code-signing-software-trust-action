@@ -12,8 +12,8 @@ inputs:
   digicert-cdn:
     description: |
       DigiCert CDN or STM environment to download the required STM tools.
-      Default https://demo.one.digicert.com
-    default: https://demo.one.digicert.com
+      Default https://pki-downloads.digicert.com/stm/latest
+    default: 'https://pki-downloads.digicert.com/stm/latest'
     required: false
   keypair-alias:
     description: 'Keypair alias'
@@ -43,12 +43,20 @@ inputs:
     description: 'Timestamping'
     required: false
     default: 'true'
+  use-binary-sha256-checksum:
+    description: |
+      Use the sha256 checksum file provided on the CDN for caching.
+      This will ensure new versions are automatically downloaded whenever released. If not enabled,
+      the behavior will be to use cache-version to determine if a new version needs to be downloaded
+      (only if cache-version is updated and use-github-caching-service is enabled).
+    required: false
+    default: 'true'
   cache-version:
     description: |
       Makes use of Github tool cache feature, useful only with self-hosted runners.
       Change this to make Github runner to download next latest version of the tool.
       This is not the actual version of the tool but to be only used for caching to avoid redundent downloads.
-    default: '0.0.0'
+    default: '0.0.0-0'
     required: false
   simple-signing-mode: 
     description: |
@@ -61,6 +69,11 @@ inputs:
       Github provided caching service to cache Software Trust Manager tools across runs.
     required: false
     default: 'true'
+  bulk-sign-mode:
+    description: |
+      Sign multiple files in a single operation (Only works with simple-signing-mode).
+    required: false
+    default: 'false'
 runs:
   using: node20
   main: 'dist/index.js'

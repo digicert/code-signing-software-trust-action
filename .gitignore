@@ -143,3 +143,5 @@ build
 bin
 input
 lib/
+
+.github

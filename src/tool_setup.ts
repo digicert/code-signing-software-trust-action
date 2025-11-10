@@ -211,7 +211,7 @@ function qulifiedToolName(name: string, os?: string, arch?: string): string {
 
 function downloadUrl(tool: ToolMetadata) {
     const cdn = core.getInput('digicert-cdn', {required: true});
-    return `${cdn}/signingmanager/api-ui/v1/releases/noauth/${tool.dlName}/download`;
+    return `${cdn}/${tool.fName}`;
 };
 
 async function postDownload(tool: ToolMetadata, downlodedFilePath: string, callback: archiveExtractCallback) {
@@ -239,13 +239,30 @@ async function cachedSetup(tool: ToolMetadata) {
     tc.findAllVersions(tool.name).forEach(rv => {
         core.info(`\tFound ${rv}`);
     });
-    core.info(`Required cached version of ${tool.name} for this run is ${VERSION}`)
+    const toolDownloadUrl = downloadUrl(tool);
+    var version = VERSION;
+    const useBinarySha256Checksum = core.getBooleanInput('use-binary-sha256-checksum', {required: false});
+    if (useBinarySha256Checksum) {
+        core.info(`Using sha256 checksum file for determining the version of ${tool.name}`);
+        const sha256ChecksumUrl = `${toolDownloadUrl}.sha256`;
+        version = await tc.downloadTool(sha256ChecksumUrl).then(async rv => {
+            core.info(`Downloaded sha256 checksum file from ${sha256ChecksumUrl}`);
+            const content = await fs.readFile(rv, {encoding: 'utf-8'});
+            const checksum = content.split(' ')[0].trim();
+            core.info(`Using sha256 checksum ${checksum} as version for ${tool.name}`);
+            return `0.0.0-${checksum}`;
+        }).catch(reason => {
+            core.warning(`Failed to download sha256 checksum file from ${sha256ChecksumUrl}, reason: ${reason}`);
+            core.warning(`Falling back to use cache-version: ${VERSION} as version for ${tool.name}`);
+            return VERSION;
+        });
+    }
+    core.info(`Required cached version of ${tool.name} for this run is ${version}`)
 
-    toolPath = tc.find(tool.name, VERSION);
+    toolPath = tc.find(tool.name, version);
     if (toolPath) {
         core.info(`${tool.name} found in cache @ ${toolPath}`);
     } else {
-        const toolDownloadUrl = downloadUrl(tool);
         core.info(`${tool.name} NOT found in cache, downloading from ${toolDownloadUrl}`)
         const downloadedPath = await tc.downloadTool(toolDownloadUrl).then(rv => {
             core.info(`${tool.name} downloaded @ ${rv}`);
@@ -258,8 +275,8 @@ async function cachedSetup(tool: ToolMetadata) {
 
         const cachePath = tool.archived && tool.explodedDirectoryName ?
             path.join(outputDir, tool.explodedDirectoryName!) : outputDir;
-
-        toolPath = await tc.cacheDir(cachePath, tool.name, VERSION).then(rv => {
+        core.info(`Caching ${tool.name}@${version} from ${cachePath}`);
+        toolPath = await tc.cacheDir(cachePath, tool.name, version).then(rv => {
             core.info(`${tool.name} cached @ ${rv}`);
             return rv;
         });
@@ -301,7 +318,7 @@ async function setupToolInternal(name: string) {
 
     if (tm.toolType === ToolType.EXECUTABLE && tm.versionFlag) {
         core.info(`Checking actual version of ${tm.name}`);
-        exec.getExecOutput(toolPath, [tm.versionFlag])
+        await exec.getExecOutput(toolPath, [tm.versionFlag])
             .catch(reason => core.warning(`failed to check: ${reason}`))
     }
     return toolPath;

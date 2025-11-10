@@ -14,7 +14,7 @@ export async function installMsi(src: string, callback: archiveExtractCallback) 
     var failed = false;
     const execOutput = await exec.getExecOutput(
         'msiexec',
-        ['/i', src, '/qn', '/le', `${tmpInstallationLogFile}`,'/norestart',`INSTALLDIR=${tmpDir}`]
+        ['/i', src, '/qn', '/le', `${tmpInstallationLogFile}`,'/norestart',`INSTALLDIR=${tmpDir}`, 'ALLUSERS=2', 'MSIINSTALLPERUSER=1']
     ).catch(reason => {
         failed = true;
     });
