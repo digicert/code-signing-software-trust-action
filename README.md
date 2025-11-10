@@ -37,6 +37,23 @@ Software Trust provides a solution to manage and automate your code signing work
 
 ## Get started
 
+> **💡 Recommendation: Use Simple Signing Mode**
+>
+> We **strongly recommend** using `simple-signing-mode: true` for new implementations. This mode:
+>
+> - ✅ **Simplifies your workflow** - No need for third-party signing tools (signtool, jarsigner ..) or intermediate libraries (smksp, smpkcs11 ..)
+> - ✅ **Cross-platform support** - Works seamlessly across Windows, Linux, and macOS
+> - ✅ **Unified signing experience** - One consistent approach for all supported file types
+> - ✅ **Future-ready** - Aligned with our strategic direction as we deprecate legacy signing methods
+> - ✅ **Better performance** - Simple signing mode is faster than traditional signing as it eliminates the overhead of intermediate libraries and third-party tool integrations and unnecessary API calls.
+> - ✅ **Further optimization** - Enable `bulk-sign-mode: true` to sign multiple files in a single batch operation, significantly reducing network round trips and improving throughput for large-scale signing (requires account feature enablement - [contact DigiCert][digicert-sales-ref])
+>
+> **Why is it disabled by default?**  
+> Simple signing mode is disabled by default to ensure seamless migration from our legacy GitHub Action without breaking existing workflows. However, we encourage all new users to adopt simple signing mode and existing users to migrate when possible.
+>
+> **For new users:** Start with simple signing mode from day one.  
+> **For existing users:** Plan to migrate to simple signing mode to take advantage of simplified workflows, improved cross-platform support, and better performance.
+
 ### Step 1: Obtain a DigiCert ONE account
 
 Software Trust is part of the DigiCert® ONE platform, which also includes DigiCert® Trust Lifecycle Manager, DigiCert® Document Trust Manager, and DigiCert® IoT Trust Manager, enabling organizations to manage their diverse PKI workflows from a single pane of glass.
@@ -105,10 +122,10 @@ Review the following variables that you can use to customize your setup:
 | `unsigned`                   | Optional | False                          |Signs only unsigned files.|
 | `timestamp`                  | Optional | True                           |Enables or disables timestamping on signed files.|
 | `cache-version`              | Optional | 0.0.0-0                        |Overrides the default [Github tool cache][tool-cache-ref] key to prompt GitHub runners to download the next available version.<br/>This value is used only for caching purposes and does not affect the actual tool version.|
-| `simple-signing-mode`        | Optional | False                          |Installs only **smctl** to enable simplified signing.|
+| `simple-signing-mode`        | Optional | False                          |Installs only **smctl** to enable simplified signing. **Recommended for new implementations** - eliminates the need for third-party signing tools and provides consistent cross-platform support.|
 | `use-github-caching-service` | Optional | True                           |Enables GitHub’s built-in caching service. This stores Software Trust tools across workflow runs since default tool caching is not supported on GitHub runners.|
-| `use-binary-sha256-checksum` | Optional | True                           |Uses SHA256 checksum from CDN for automatic version detection and caching. When enabled, tools are automatically updated when new versions are released (Recommended).|
-| `bulk-sign-mode`             | Optional | False                          |Signs multiple files in a single operation. Only works with `simple-signing-mode`.|
+| `use-binary-sha256-checksum` | Optional | True                           |Uses SHA256 checksum from CDN for automatic version detection and caching. When enabled, tools are automatically updated when new versions are released.|
+| `bulk-sign-mode`             | Optional | False                          |Signs multiple files in a single batch operation. Only works with `simple-signing-mode`. **Recommended for high-volume signing** - significantly reduces network round trips and improves throughput compared to sequential simple signing. **Note:** This feature must be enabled for your account. [Contact DigiCert][digicert-sales-ref] to request access.|
 
 ### Step 4: Review required environment variables
 
