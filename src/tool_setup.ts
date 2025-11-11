@@ -20,7 +20,7 @@ export const SMPKCS11 = "smpkcs11";
 export const SMCTK = "smctk";
 export const SCD = "ssm-scd";
 
-const VERSION = core.getInput('cache-version', {required: true});
+const VERSION = core.getInput('cache-version', { required: true });
 
 const enum LibExtension {
     win32 = ".dll",
@@ -49,7 +49,7 @@ type ToolMetadata = {
     readonly toolType: ToolType;
     readonly archived: boolean;
     readonly archiveType: ArchiveType;
-    readonly explodedDirectoryName? : string;
+    readonly explodedDirectoryName?: string;
     readonly versionFlag?: string;
     readonly executePermissionRequired?: boolean;
     initialized?: boolean;
@@ -80,8 +80,6 @@ const smctlMacValues = {
         const targetPath = path.join(toolPath, SMCTL);
         core.info(`Creating symlink: ${targetPath} -> ${sourcePath}`);
         try {
-            // Remove existing symlink if it exists
-            await fs.unlink(targetPath).catch(() => {});
             await fs.symlink(sourcePath, targetPath);
         } catch (error) {
             core.warning(`Failed to create symlink: ${error}`);
@@ -144,18 +142,18 @@ const smtoolsWindowsBundle = "smtools-win32-x64";
 const smtoolsLinuxBundle = "smtools-linux-x64";
 
 const staticToolDefintions = new Map<string, ToolMetadata>([
-    [ smctlWindowsX64, {...smctlValues, dlName: "smctl.exe", fName: "smctl.exe" }],
-    [ smctlLinuxX64,   {...smctlValues, dlName: "smctl", executePermissionRequired: true }],
-    [ smctlMacX64,     {...smctlMacValues }],
-    [ smctlMacArm64,   {...smctlMacValues }],
-    [ smpkcs11MacX64,     {...smpkcs11MacValues }],
-    [ smpkcs11MacArm64,   {...smpkcs11MacValues }],
-    [ smctkMacX64, {...smctkMacValues}],
-    [ smctkMacArm64, {...smctkMacValues}],
-    [ scdMacX64, {...scdMacValues}],
-    [ scdMacArm64, {...scdMacValues}],
+    [smctlWindowsX64, { ...smctlValues, dlName: "smctl.exe", fName: "smctl.exe" }],
+    [smctlLinuxX64, { ...smctlValues, dlName: "smctl", executePermissionRequired: true }],
+    [smctlMacX64, { ...smctlMacValues }],
+    [smctlMacArm64, { ...smctlMacValues }],
+    [smpkcs11MacX64, { ...smpkcs11MacValues }],
+    [smpkcs11MacArm64, { ...smpkcs11MacValues }],
+    [smctkMacX64, { ...smctkMacValues }],
+    [smctkMacArm64, { ...smctkMacValues }],
+    [scdMacX64, { ...scdMacValues }],
+    [scdMacArm64, { ...scdMacValues }],
 
-    [ smtoolsWindowsBundle, {
+    [smtoolsWindowsBundle, {
         name: smtoolsWindowsBundle,
         archived: true,
         archiveType: ArchiveType.MSI,
@@ -167,7 +165,7 @@ const staticToolDefintions = new Map<string, ToolMetadata>([
         },
         needPKCS11Config: true,
     }],
-    [ smtoolsLinuxBundle, {
+    [smtoolsLinuxBundle, {
         name: smtoolsLinuxBundle,
         archived: true,
         archiveType: ArchiveType.TAR,
@@ -192,7 +190,7 @@ async function writePKCS11ConfigFile(toolPath: string) {
 
     if (!exists) {
         var libraryPath = "";
-        switch(core.platform.platform) {
+        switch (core.platform.platform) {
             case 'win32':
                 libraryPath = path.join(toolPath, `${SMPKCS11}.dll`);
                 break;
@@ -209,9 +207,9 @@ async function writePKCS11ConfigFile(toolPath: string) {
             slotListIndex=0
         `;
 
-        await fs.writeFile(cfgPath, cfg, {flush: true});
+        await fs.writeFile(cfgPath, cfg, { flush: true });
     }
-    if(core.platform.isWindows) {
+    if (core.platform.isWindows) {
         cfgPath = cfgPath.replaceAll('\\', '\\\\');
     }
     core.setOutput('PKCS11_CONFIG', cfgPath);
@@ -223,7 +221,7 @@ function qulifiedToolName(name: string, os?: string, arch?: string): string {
 };
 
 function downloadUrl(tool: ToolMetadata) {
-    const cdn = core.getInput('digicert-cdn', {required: true});
+    const cdn = core.getInput('digicert-cdn', { required: true });
     return `${cdn}/${tool.dlName}`;
 };
 
@@ -254,13 +252,13 @@ async function cachedSetup(tool: ToolMetadata) {
     });
     const toolDownloadUrl = downloadUrl(tool);
     var version = VERSION;
-    const useBinarySha256Checksum = core.getBooleanInput('use-binary-sha256-checksum', {required: false});
+    const useBinarySha256Checksum = core.getBooleanInput('use-binary-sha256-checksum', { required: false });
     if (useBinarySha256Checksum) {
         core.info(`Using sha256 checksum file for determining the version of ${tool.name}`);
         const sha256ChecksumUrl = `${toolDownloadUrl}.sha256`;
         version = await tc.downloadTool(sha256ChecksumUrl).then(async rv => {
             core.info(`Downloaded sha256 checksum file from ${sha256ChecksumUrl}`);
-            const content = await fs.readFile(rv, {encoding: 'utf-8'});
+            const content = await fs.readFile(rv, { encoding: 'utf-8' });
             const checksum = content.split(' ')[0].trim();
             core.info(`Using sha256 checksum ${checksum} as version for ${tool.name}`);
             return `0.0.0-${checksum}`;
@@ -282,7 +280,7 @@ async function cachedSetup(tool: ToolMetadata) {
             return rv;
         });
 
-        const outputDir = await postDownload(tool, downloadedPath, async(postPath: string) => {
+        const outputDir = await postDownload(tool, downloadedPath, async (postPath: string) => {
             core.info(`Performing post download activities for ${postPath}`);
         });
 
@@ -298,8 +296,8 @@ async function cachedSetup(tool: ToolMetadata) {
             await chmod(toolPath);
         }
 
-    if (tool.createSymlink) {
-        await tool.createSymlink(toolPath);
+        if (tool.createSymlink) {
+            await tool.createSymlink(toolPath);
         }
     }
 
