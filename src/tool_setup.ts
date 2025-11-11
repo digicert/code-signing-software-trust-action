@@ -381,15 +381,10 @@ export async function setupTool(name: string) {
         return cachePath;
     }
 
-    return await setupToolInternal(name).then(rv => {
-        if (tryGithubCache && cachePath && !cacheHit) {
-            core.info(`It was a cache miss for ${cacheKey}, saving it now`);
-            cache.saveCache([cachePath], cacheKey).then(rv => {
-                core.info(`Cache saved successfully, cacheId is ${rv}`);
-            }).catch(error => {
-                core.warning(`Error in saving cache: ${error}`)
-            })
-        };
-        return rv;
-    });
+    const rv = await setupToolInternal(name);
+    if (tryGithubCache && cachePath && !cacheHit) {
+        core.info(`It was a cache miss for ${cacheKey}, saving it now`);
+        await cache.saveCache([cachePath], cacheKey);
+    }
+    return rv;
 };
