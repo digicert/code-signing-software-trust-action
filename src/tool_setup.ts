@@ -78,7 +78,7 @@ const smctlMacValues = {
     async createSymlink(toolPath: string) {
         const sourcePath = path.join(toolPath, 'smctl-mac-x64');
         const targetPath = path.join(toolPath, SMCTL);
-        
+
         try {
             const stats = await fs.lstat(targetPath);
             if (stats.isSymbolicLink()) {
@@ -369,28 +369,26 @@ export async function setupTool(name: string) {
 
     if (tryGithubCache && cachePath) {
         core.info(`Trying to restore cache for ${cacheKey} @ ${cachePath}`);
-        await cache.restoreCache([cachePath], cacheKey).then(resolve => {
-            cacheHit = resolve;
-        }).catch(reason => {
-            core.warning(`Error in restoring cache: ${reason}`);
-        })
+        cacheHit = await cache.restoreCache([cachePath], cacheKey);
     };
 
+    if (cacheHit) {
+        core.info(`GitHub Actions cache hit for ${cacheKey}`);
+        if (tm.cacheHitSetup) {
+            tm.cacheHitSetup(cachePath);
+        }
+        core.addPath(cachePath);
+        return cachePath;
+    }
+
     return await setupToolInternal(name).then(rv => {
-        if (tryGithubCache && cachePath) {
-            // If it's Github cache hit, then no files in System32 and SysWOW64 and no entry in registry,
-            // So do the cache hit activity here.
-            if (cacheHit && tm.cacheHitSetup) {
-                tm.cacheHitSetup!(rv);
-            }
-            if (!cacheHit) {
-                core.info(`It was a cache miss for ${cacheKey}, saving it now`);
-                cache.saveCache([cachePath], cacheKey).then(rv => {
-                    core.info(`Cache saved successfully, cacheId is ${rv}`);
-                }).catch(error => {
-                    core.warning(`Error in saving cache: ${error}`)
-                })
-            }
+        if (tryGithubCache && cachePath && !cacheHit) {
+            core.info(`It was a cache miss for ${cacheKey}, saving it now`);
+            cache.saveCache([cachePath], cacheKey).then(rv => {
+                core.info(`Cache saved successfully, cacheId is ${rv}`);
+            }).catch(error => {
+                core.warning(`Error in saving cache: ${error}`)
+            })
         };
         return rv;
     });
