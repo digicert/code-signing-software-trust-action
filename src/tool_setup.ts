@@ -78,6 +78,19 @@ const smctlMacValues = {
     async createSymlink(toolPath: string) {
         const sourcePath = path.join(toolPath, 'smctl-mac-x64');
         const targetPath = path.join(toolPath, SMCTL);
+        
+        try {
+            const stats = await fs.lstat(targetPath);
+            if (stats.isSymbolicLink()) {
+                core.info(`Symlink already exists: ${targetPath}`);
+                return;
+            }
+            // If it exists but is not a symlink, remove it
+            core.info(`Removing existing file at ${targetPath}`);
+            await fs.unlink(targetPath);
+        } catch {
+            // File doesn't exist, which is fine - we'll create it
+        }
         core.info(`Creating symlink: ${targetPath} -> ${sourcePath}`);
         try {
             await fs.symlink(sourcePath, targetPath);
