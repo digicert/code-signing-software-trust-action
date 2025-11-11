@@ -15,7 +15,7 @@ export async function main() {
     }
     const isSimpleSigning = core.getBooleanInput('simple-signing-mode');
     if (isSimpleSigning) {
-        core.info(`Settup up ${productName} for simple-signing mode.`);
+        core.info(`Setting up ${productName} for simple-signing mode.`);
         const smctl = await setupTool(SMCTL);
         await simplifiedSign(smctl);
     } else {

@@ -12,8 +12,8 @@ inputs:
   digicert-cdn:
     description: |
       DigiCert CDN or STM environment to download the required STM tools.
-      Default https://demo.one.digicert.com
-    default: https://demo.one.digicert.com
+      Default https://pki-downloads.digicert.com/stm/latest
+    default: 'https://pki-downloads.digicert.com/stm/latest'
     required: false
   keypair-alias:
     description: 'Keypair alias'
@@ -43,12 +43,24 @@ inputs:
     description: 'Timestamping'
     required: false
     default: 'true'
+  use-binary-sha256-checksum:
+    description: |
+      Use the SHA-256 checksum file provided on the CDN to handle caching.
+      This ensures that new versions are automatically downloaded when they are available.
+      If this option is not enabled, the system instead relies on cache-version
+      to determine whether a new download is needed.
+      This workflow functions when cache-version is updated and 'use-github-caching-service' is enabled.
+    required: false
+    default: 'true'
   cache-version:
     description: |
       Makes use of Github tool cache feature, useful only with self-hosted runners.
-      Change this to make Github runner to download next latest version of the tool.
-      This is not the actual version of the tool but to be only used for caching to avoid redundent downloads.
-    default: '0.0.0'
+      Change this to make Github runner download the next latest version of the tool.
+      This is not the actual version of the tool but is only used for caching to avoid redundant downloads.
+      The default value uses a semantic version format with a '-0' suffix (e.g., '0.0.0-0') to ensure
+      compatibility with caching mechanisms that expect semantic versioning.
+      This value is arbitrary and does not reflect the tool's actual version.
+    default: '0.0.0-0'
     required: false
   simple-signing-mode: 
     description: |
@@ -61,6 +73,11 @@ inputs:
       Github provided caching service to cache Software Trust Manager tools across runs.
     required: false
     default: 'true'
+  bulk-sign-mode:
+    description: |
+      Sign multiple files in a single operation. This action only works when you are simple signing.
+    required: false
+    default: 'false'
 runs:
   using: node20
   main: 'dist/index.js'

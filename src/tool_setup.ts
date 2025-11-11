@@ -56,6 +56,7 @@ type ToolMetadata = {
     toolPath?: string;
     cacheHitSetup?: (toolPath: string) => void;
     needPKCS11Config?: boolean;
+    createSymlink?: (toolPath: string) => Promise<void>;
 };
 
 const smctlValues = {
@@ -73,7 +74,17 @@ const smctlMacValues = {
     archived: true,
     archiveType: ArchiveType.DMG,
     fName: 'smctl-mac-x64',
-    dlName: 'smctl-mac-x64',
+    dlName: 'smctl-mac-x64.dmg',
+    async createSymlink(toolPath: string) {
+        const sourcePath = path.join(toolPath, 'smctl-mac-x64');
+        const targetPath = path.join(toolPath, SMCTL);
+        core.info(`Creating symlink: ${targetPath} -> ${sourcePath}`);
+        try {
+            await fs.symlink(sourcePath, targetPath);
+        } catch (error) {
+            core.warning(`Failed to create symlink: ${error}`);
+        }
+    },
 }
 
 const scdMacValues: ToolMetadata = {
@@ -82,7 +93,7 @@ const scdMacValues: ToolMetadata = {
     archived: true,
     archiveType: ArchiveType.DMG,
     fName: 'ssm-scd-x64',
-    dlName: 'ssm-scd-mac-x64',
+    dlName: 'ssm-scd-x64.dmg',
     toolType: ToolType.EXECUTABLE,
     versionFlag: "-v",
 };
@@ -93,7 +104,7 @@ const smctkMacValues: ToolMetadata = {
     archived: true,
     archiveType: ArchiveType.ZIP,
     fName: 'smctk-apple-any',
-    dlName: 'smctk-apple-any',
+    dlName: 'DigiCert SSM Signing Clients.zip',
     toolType: ToolType.ARCHIVE,
 };
 
@@ -110,7 +121,7 @@ const smpkcs11MacValues = {
     archived: true,
     archiveType: ArchiveType.DMG,
     fName: 'smpkcs11.dylib',
-    dlName: 'smpkcs11-mac-x64',
+    dlName: 'smpkcs11.dylib.dmg',
     needPKCS11Config: true,
 };
 
@@ -131,8 +142,8 @@ const smtoolsWindowsBundle = "smtools-win32-x64";
 const smtoolsLinuxBundle = "smtools-linux-x64";
 
 const staticToolDefintions = new Map<string, ToolMetadata>([
-    [ smctlWindowsX64, {...smctlValues, dlName: "smctl-windows-x64", fName: "smctl.exe" }],
-    [ smctlLinuxX64,   {...smctlValues, dlName: "smctl-linux-x64", executePermissionRequired: true }],
+    [ smctlWindowsX64, {...smctlValues, dlName: "smctl.exe", fName: "smctl.exe" }],
+    [ smctlLinuxX64,   {...smctlValues, dlName: "smctl", executePermissionRequired: true }],
     [ smctlMacX64,     {...smctlMacValues }],
     [ smctlMacArm64,   {...smctlMacValues }],
     [ smpkcs11MacX64,     {...smpkcs11MacValues }],
@@ -211,7 +222,7 @@ function qulifiedToolName(name: string, os?: string, arch?: string): string {
 
 function downloadUrl(tool: ToolMetadata) {
     const cdn = core.getInput('digicert-cdn', {required: true});
-    return `${cdn}/signingmanager/api-ui/v1/releases/noauth/${tool.dlName}/download`;
+    return `${cdn}/${tool.dlName}`;
 };
 
 async function postDownload(tool: ToolMetadata, downlodedFilePath: string, callback: archiveExtractCallback) {
@@ -239,13 +250,30 @@ async function cachedSetup(tool: ToolMetadata) {
     tc.findAllVersions(tool.name).forEach(rv => {
         core.info(`\tFound ${rv}`);
     });
-    core.info(`Required cached version of ${tool.name} for this run is ${VERSION}`)
+    const toolDownloadUrl = downloadUrl(tool);
+    var version = VERSION;
+    const useBinarySha256Checksum = core.getBooleanInput('use-binary-sha256-checksum', {required: false});
+    if (useBinarySha256Checksum) {
+        core.info(`Using sha256 checksum file for determining the version of ${tool.name}`);
+        const sha256ChecksumUrl = `${toolDownloadUrl}.sha256`;
+        version = await tc.downloadTool(sha256ChecksumUrl).then(async rv => {
+            core.info(`Downloaded sha256 checksum file from ${sha256ChecksumUrl}`);
+            const content = await fs.readFile(rv, {encoding: 'utf-8'});
+            const checksum = content.split(' ')[0].trim();
+            core.info(`Using sha256 checksum ${checksum} as version for ${tool.name}`);
+            return `0.0.0-${checksum}`;
+        }).catch(reason => {
+            core.warning(`Failed to download sha256 checksum file from ${sha256ChecksumUrl}, reason: ${reason}`);
+            core.warning(`Falling back to use cache-version: ${VERSION} as version for ${tool.name}`);
+            return VERSION;
+        });
+    }
+    core.info(`Required cached version of ${tool.name} for this run is ${version}`)
 
-    toolPath = tc.find(tool.name, VERSION);
+    toolPath = tc.find(tool.name, version);
     if (toolPath) {
         core.info(`${tool.name} found in cache @ ${toolPath}`);
     } else {
-        const toolDownloadUrl = downloadUrl(tool);
         core.info(`${tool.name} NOT found in cache, downloading from ${toolDownloadUrl}`)
         const downloadedPath = await tc.downloadTool(toolDownloadUrl).then(rv => {
             core.info(`${tool.name} downloaded @ ${rv}`);
@@ -258,8 +286,8 @@ async function cachedSetup(tool: ToolMetadata) {
 
         const cachePath = tool.archived && tool.explodedDirectoryName ?
             path.join(outputDir, tool.explodedDirectoryName!) : outputDir;
-
-        toolPath = await tc.cacheDir(cachePath, tool.name, VERSION).then(rv => {
+        core.info(`Caching ${tool.name}@${version} from ${cachePath}`);
+        toolPath = await tc.cacheDir(cachePath, tool.name, version).then(rv => {
             core.info(`${tool.name} cached @ ${rv}`);
             return rv;
         });
@@ -267,6 +295,10 @@ async function cachedSetup(tool: ToolMetadata) {
         if (tool.executePermissionRequired) {
             await chmod(toolPath);
         }
+    }
+
+    if (tool.createSymlink) {
+        await tool.createSymlink(toolPath);
     }
 
     if (tool.needPKCS11Config) {
@@ -301,7 +333,7 @@ async function setupToolInternal(name: string) {
 
     if (tm.toolType === ToolType.EXECUTABLE && tm.versionFlag) {
         core.info(`Checking actual version of ${tm.name}`);
-        exec.getExecOutput(toolPath, [tm.versionFlag])
+        await exec.getExecOutput(toolPath, [tm.versionFlag])
             .catch(reason => core.warning(`failed to check: ${reason}`))
     }
     return toolPath;
