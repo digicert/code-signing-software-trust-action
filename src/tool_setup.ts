@@ -80,28 +80,29 @@ const smctlMacValues = {
         const targetPath = path.join(toolPath, SMCTL);
 
         try {
-            // Check if the target path exists and what it is.
-            const stats = await fs.lstat(targetPath).catch(() => null);
-
-            if (stats) {
-                if (stats.isSymbolicLink()) {
-                    core.info(`Symlink already exists at ${targetPath}. No action needed.`);
-                    return;
-                }
-                // If it's a file or directory, remove it before creating the symlink.
-                core.info(`Removing existing file/directory at ${targetPath} to make way for symlink.`);
+            // Try to remove the target if it exists, regardless of what it is
+            try {
                 await fs.unlink(targetPath);
+                core.info(`Removed existing file at ${targetPath}`);
+            } catch (unlinkError: any) {
+                // ENOENT means the file doesn't exist, which is fine
+                if (unlinkError.code !== 'ENOENT') {
+                    core.info(`Could not remove ${targetPath}: ${unlinkError.message}`);
+                }
             }
 
-            // Create the symlink.
+            // Create the symlink: target points to source
             core.info(`Creating symlink: ${targetPath} -> ${sourcePath}`);
             await fs.symlink(sourcePath, targetPath);
+            core.info(`Successfully created symlink`);
 
         } catch (error) {
             core.warning(`Failed to create symlink: ${error}`);
         }
     },
-}const scdMacValues: ToolMetadata = {
+};
+
+const scdMacValues: ToolMetadata = {
     name: SCD,
     initialized: false,
     archived: true,
