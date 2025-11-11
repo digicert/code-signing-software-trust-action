@@ -297,10 +297,10 @@ async function cachedSetup(tool: ToolMetadata) {
         if (tool.executePermissionRequired) {
             await chmod(toolPath);
         }
-    }
 
     if (tool.createSymlink) {
         await tool.createSymlink(toolPath);
+        }
     }
 
     if (tool.needPKCS11Config) {
