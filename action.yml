@@ -2,9 +2,9 @@
 
 # Sample action yaml files
 # https://github.com/microsoft/action-python/blob/main/action.yml
-name: '<a href="https://www.digicert.com">DigiCert Software Trust Manager</a> simplified signing'
+name: 'DigiCert Binary Signing'
 author: DigiCert
-description: 'Sign your artifacts with STM'
+description: 'Code signing for Windows/Linux/macOS. Includes private key security, MFA, streamlined automation and bulk signing for high volume releases.'
 branding:
   color: blue
   icon: check-circle
