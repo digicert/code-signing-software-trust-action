@@ -4,7 +4,7 @@
 # https://github.com/microsoft/action-python/blob/main/action.yml
 name: 'DigiCert Binary Signing'
 author: DigiCert
-description: 'Code signing for Windows/Linux/macOS. Includes private key security, MFA, streamlined automation and bulk signing for high volume releases.'
+description: 'Code signing for Win/Linux/Mac. Includes private key security, MFA, easy automation and bulk signing for high volume releases'
 branding:
   color: blue
   icon: check-circle
