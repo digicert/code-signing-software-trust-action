@@ -46,7 +46,7 @@ Simple signing mode:
 - **Provides a unified signing experience**: There is a single, consistent approach for all supported file types.
 - **Is future ready**: As we deprecate legacy signing methods, this mode is aligned with our strategic direction.
 - **Offers better performance**: Simple signing mode is faster than traditional signing because there is no need for intermediate libraries, third-party tool integrations, or unnecessary API calls.
-- **Supports bulk signing**: You can enable `bulk-sign-mode: true` to sign multiple files in a single batch operation, significantly reducing network round trips and improving throughput for large-scale signing. (To enable this feature, [contact DigiCert][digicert-sales-ref]).
+- **Supports bulk signing**: You can enable `bulk-sign-mode: true` to sign multiple files in a single batch operation, significantly reducing network round trips and improving throughput for large-scale signing. (By default, this feature is disabled and is only available for Software Trust users. To enable this feature, [contact DigiCert][digicert-sales-ref].)
 
 By default, the simple signing mode is disabled to ensure seamless migration from our legacy GitHub Actions without breaking existing workflows. However, we encourage all new users to adopt simple signing and all existing users to migrate when possible.
 
