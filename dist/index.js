@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 83741:
+/***/ 71810:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -66,7 +66,7 @@ async function chmod(toolPath) {
 
 /***/ }),
 
-/***/ 67824:
+/***/ 33299:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -132,7 +132,7 @@ async function walk(dirPath) {
 
 /***/ }),
 
-/***/ 59969:
+/***/ 18488:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -176,7 +176,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.wrapInDirectory = wrapInDirectory;
 const fs = __importStar(__nccwpck_require__(91943));
-const utils_1 = __nccwpck_require__(69277);
+const utils_1 = __nccwpck_require__(18992);
 const path_1 = __importDefault(__nccwpck_require__(16928));
 async function wrapInDirectory(src, target, callback) {
     const tmpDir = (0, utils_1.randomTmpDir)();
@@ -189,7 +189,7 @@ async function wrapInDirectory(src, target, callback) {
 
 /***/ }),
 
-/***/ 51188:
+/***/ 68981:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -231,9 +231,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.main = main;
 const core = __importStar(__nccwpck_require__(37484));
 const cache = __importStar(__nccwpck_require__(5116));
-const tool_setup_1 = __nccwpck_require__(63082);
-const smctl_signing_1 = __nccwpck_require__(67469);
-const utils_1 = __nccwpck_require__(69277);
+const tool_setup_1 = __nccwpck_require__(29025);
+const smctl_signing_1 = __nccwpck_require__(740);
+const utils_1 = __nccwpck_require__(18992);
 const productName = "'DigiCert Software Trust Manager'";
 async function main() {
     core.info(`Platform caching service available: ${cache.isFeatureAvailable()}`);
@@ -272,7 +272,7 @@ main().catch((reason) => core.setFailed(reason));
 
 /***/ }),
 
-/***/ 81416:
+/***/ 44617:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -315,7 +315,7 @@ exports.extractDmg = extractDmg;
 const exec = __importStar(__nccwpck_require__(95236));
 const core = __importStar(__nccwpck_require__(37484));
 const path = __importStar(__nccwpck_require__(16928));
-const utils_1 = __nccwpck_require__(69277);
+const utils_1 = __nccwpck_require__(18992);
 async function extractDmg(dmgFile, callback) {
     const volume = path.join('/Volumes', (0, utils_1.randomDirName)());
     core.info(`Mounting DMG file ${dmgFile} to volume ${volume}`);
@@ -327,7 +327,7 @@ async function extractDmg(dmgFile, callback) {
 
 /***/ }),
 
-/***/ 67469:
+/***/ 740:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -369,8 +369,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.simplifiedSign = simplifiedSign;
 const exec = __importStar(__nccwpck_require__(95236));
 const core = __importStar(__nccwpck_require__(37484));
-const tool_setup_1 = __nccwpck_require__(63082);
-const utils_1 = __nccwpck_require__(69277);
+const tool_setup_1 = __nccwpck_require__(29025);
+const utils_1 = __nccwpck_require__(18992);
 async function simplifiedSign(toolPath) {
     const input = core.getInput('input');
     const keypairAlias = core.getInput('keypair-alias');
@@ -404,7 +404,7 @@ async function simplifiedSign(toolPath) {
 
 /***/ }),
 
-/***/ 63082:
+/***/ 29025:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -451,14 +451,14 @@ const exec = __importStar(__nccwpck_require__(95236));
 const tc = __importStar(__nccwpck_require__(33472));
 const fs = __importStar(__nccwpck_require__(91943));
 const path = __importStar(__nccwpck_require__(16928));
-const macos_dmg_setup_1 = __nccwpck_require__(81416);
-const utils_1 = __nccwpck_require__(69277);
-const windows_msi_setup_1 = __nccwpck_require__(28139);
-const file_noop_setup_1 = __nccwpck_require__(59969);
-const zip_setup_1 = __nccwpck_require__(65849);
-const directory_walk_recursive_1 = __nccwpck_require__(67824);
-const windows_library_setup_1 = __nccwpck_require__(25787);
-const add_execute_permission_1 = __nccwpck_require__(83741);
+const macos_dmg_setup_1 = __nccwpck_require__(44617);
+const utils_1 = __nccwpck_require__(18992);
+const windows_msi_setup_1 = __nccwpck_require__(55642);
+const file_noop_setup_1 = __nccwpck_require__(18488);
+const zip_setup_1 = __nccwpck_require__(88048);
+const directory_walk_recursive_1 = __nccwpck_require__(33299);
+const windows_library_setup_1 = __nccwpck_require__(95902);
+const add_execute_permission_1 = __nccwpck_require__(71810);
 exports.SMCTL = "smctl";
 exports.SMTOOLS = "smtools";
 exports.SMPKCS11 = "smpkcs11";
@@ -486,6 +486,14 @@ const smctlMacValues = {
     async createSymlink(toolPath) {
         const sourcePath = path.join(toolPath, 'smctl-mac-x64');
         const targetPath = path.join(toolPath, exports.SMCTL);
+        // Remove existing symlink/file if it exists
+        try {
+            await fs.rm(targetPath, { force: true });
+            core.info(`Removed existing file at ${targetPath}`);
+        }
+        catch {
+            // Ignore errors - file might not exist
+        }
         core.info(`Creating symlink: ${targetPath} -> ${sourcePath}`);
         try {
             await fs.symlink(sourcePath, targetPath);
@@ -778,7 +786,7 @@ async function setupTool(name) {
 
 /***/ }),
 
-/***/ 69277:
+/***/ 18992:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -860,7 +868,7 @@ exports.isValidStr = isValidStr;
 
 /***/ }),
 
-/***/ 25787:
+/***/ 95902:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -907,8 +915,8 @@ const core = __importStar(__nccwpck_require__(37484));
 const exec = __importStar(__nccwpck_require__(95236));
 const fs = __importStar(__nccwpck_require__(91943));
 const path_1 = __importDefault(__nccwpck_require__(16928));
-const tool_setup_1 = __nccwpck_require__(63082);
-const utils_1 = __nccwpck_require__(69277);
+const tool_setup_1 = __nccwpck_require__(29025);
+const utils_1 = __nccwpck_require__(18992);
 async function setupLibraries(smtoolsPath) {
     // CBonnell: consider adding error handling in the batch file
     // anshuman-mor: Delaying it for now, will relook into error handling later.
@@ -968,7 +976,7 @@ async function setupLibraries(smtoolsPath) {
 
 /***/ }),
 
-/***/ 28139:
+/***/ 55642:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -1015,7 +1023,7 @@ const core = __importStar(__nccwpck_require__(37484));
 const exec = __importStar(__nccwpck_require__(95236));
 const fs = __importStar(__nccwpck_require__(91943));
 const path_1 = __importDefault(__nccwpck_require__(16928));
-const utils_1 = __nccwpck_require__(69277);
+const utils_1 = __nccwpck_require__(18992);
 async function installMsi(src, callback) {
     const tmpDir = (0, utils_1.randomTmpDir)();
     await fs.mkdir(tmpDir);
@@ -1036,7 +1044,7 @@ async function installMsi(src, callback) {
 
 /***/ }),
 
-/***/ 65849:
+/***/ 88048:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -1078,7 +1086,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.extractZip = extractZip;
 exports.extractTar = extractTar;
 const tc = __importStar(__nccwpck_require__(33472));
-const utils_1 = __nccwpck_require__(69277);
+const utils_1 = __nccwpck_require__(18992);
 async function extractZip(path, callback) {
     const tmpDir = (0, utils_1.randomTmpDir)();
     const rv = await tc.extractZip(path, tmpDir);
@@ -85256,7 +85264,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"name":"@actions/cache","version":"4.
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(51188);
+/******/ 	var __webpack_exports__ = __nccwpck_require__(68981);
 /******/ 	module.exports = __webpack_exports__;
 /******/ 	
 /******/ })()
