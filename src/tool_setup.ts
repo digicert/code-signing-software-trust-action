@@ -271,10 +271,15 @@ async function cachedSetup(tool: ToolMetadata) {
     core.info(`Required cached version of ${tool.name} for this run is ${version}`)
 
     toolPath = tc.find(tool.name, version);
-    if (toolPath) {
+    var useCache = core.getBooleanInput('use-github-caching-service')
+    if (useCache && toolPath) {
         core.info(`${tool.name} found in cache @ ${toolPath}`);
     } else {
-        core.info(`${tool.name} NOT found in cache, downloading from ${toolDownloadUrl}`)
+        if (useCache) {
+            core.info(`${tool.name} NOT found in cache, downloading from ${toolDownloadUrl}`);
+        } else {
+            core.info(`Caching is disabled, downloading ${tool.name} from ${toolDownloadUrl}`);
+        }
         const downloadedPath = await tc.downloadTool(toolDownloadUrl).then(rv => {
             core.info(`${tool.name} downloaded @ ${rv}`);
             return rv;
