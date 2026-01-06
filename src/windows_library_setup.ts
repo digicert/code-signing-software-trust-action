@@ -10,40 +10,40 @@ export async function setupLibraries(smtoolsPath: string) {
     // anshuman-mor: Delaying it for now, will relook into error handling later.
     const cspResitryCommands = `
         @REM For ssmcsp-x86
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
 
         @REM For ssmcsp-x64
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
 
         @REM For ssmcsp-x86
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
 
         @REM For ssmcsp-x64
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
     `;
 
     const batchFile = path.join(tmpDir, `${randomFileName()}.bat`);

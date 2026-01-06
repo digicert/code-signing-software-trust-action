@@ -670,11 +670,17 @@ async function cachedSetup(tool) {
     }
     core.info(`Required cached version of ${tool.name} for this run is ${version}`);
     toolPath = tc.find(tool.name, version);
-    if (toolPath) {
+    var useCache = core.getBooleanInput('use-github-caching-service');
+    if (useCache && toolPath) {
         core.info(`${tool.name} found in cache @ ${toolPath}`);
     }
     else {
-        core.info(`${tool.name} NOT found in cache, downloading from ${toolDownloadUrl}`);
+        if (useCache) {
+            core.info(`${tool.name} NOT found in cache, downloading from ${toolDownloadUrl}`);
+        }
+        else {
+            core.info(`Caching is disabled, downloading ${tool.name} from ${toolDownloadUrl}`);
+        }
         const downloadedPath = await tc.downloadTool(toolDownloadUrl).then(rv => {
             core.info(`${tool.name} downloaded @ ${rv}`);
             return rv;
@@ -914,40 +920,40 @@ async function setupLibraries(smtoolsPath) {
     // anshuman-mor: Delaying it for now, will relook into error handling later.
     const cspResitryCommands = `
         @REM For ssmcsp-x86
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
 
         @REM For ssmcsp-x64
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
 
         @REM For ssmcsp-x86
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
 
         @REM For ssmcsp-x64
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "SigInFile" /t REG_DWORD /d 0 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Type" /t REG_DWORD /d 1 /f
 
-        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll"
+        reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Secure Software Manager CSP" /v "Image Path" /t REG_SZ /d "ssmcsp.dll" /f
     `;
     const batchFile = path_1.default.join(utils_1.tmpDir, `${(0, utils_1.randomFileName)()}.bat`);
     await fs.writeFile(batchFile, cspResitryCommands, { flush: true });
@@ -1016,21 +1022,56 @@ const exec = __importStar(__nccwpck_require__(95236));
 const fs = __importStar(__nccwpck_require__(91943));
 const path_1 = __importDefault(__nccwpck_require__(16928));
 const utils_1 = __nccwpck_require__(69277);
+async function uninstallExistingMsi(msiPath) {
+    core.info(`Attempting to uninstall any existing installation using ${msiPath}`);
+    // Use the MSI file itself to uninstall any existing installation
+    // If the product isn't installed, msiexec will return error 1605 which we can ignore
+    return exec.getExecOutput('msiexec', ['/x', msiPath, '/qn', '/norestart'], { ignoreReturnCode: true, silent: true })
+        .then(uninstallOutput => {
+        if (uninstallOutput.exitCode === 0) {
+            core.info(`Successfully uninstalled existing installation`);
+            return true;
+        }
+        if (uninstallOutput.exitCode === 1605) {
+            // Error 1605: This action is only valid for products that are currently installed
+            core.info(`No existing installation found (exit code 1605)`);
+            return false;
+        }
+        core.warning(`Uninstallation completed with exit code ${uninstallOutput.exitCode}`);
+        return false;
+    })
+        .catch(error => {
+        core.warning(`Error during uninstallation attempt: ${error}`);
+        return false;
+    });
+}
 async function installMsi(src, callback) {
+    // Try to uninstall any existing installation using the same MSI file
+    await uninstallExistingMsi(src);
     const tmpDir = (0, utils_1.randomTmpDir)();
     await fs.mkdir(tmpDir);
     const tmpInstallationLogFile = path_1.default.join(tmpDir, `${(0, utils_1.randomFileName)()}.log`);
     core.info(`Installing ${src} @ ${tmpDir}`);
-    var failed = false;
-    const execOutput = await exec.getExecOutput('msiexec', ['/i', src, '/qn', '/le', `${tmpInstallationLogFile}`, '/norestart', `INSTALLDIR=${tmpDir}`, 'ALLUSERS=2', 'MSIINSTALLPERUSER=1']).catch(reason => {
-        failed = true;
+    return exec.getExecOutput('msiexec', ['/i', src, '/qn', '/le', `${tmpInstallationLogFile}`, '/norestart', `INSTALLDIR=${tmpDir}`])
+        .then(async (execOutput) => {
+        if (execOutput.exitCode !== 0) {
+            const content = await fs.readFile(tmpInstallationLogFile, 'utf-8');
+            throw new Error(`Installation of ${src} failed. ${content}`);
+        }
+        core.info(`Installation of ${src} completed successfully.`);
+        await callback(tmpDir);
+        return tmpDir;
+    })
+        .catch(async (error) => {
+        // Try to read the log file for additional context
+        try {
+            const content = await fs.readFile(tmpInstallationLogFile, 'utf-8');
+            throw new Error(`Installation of ${src} failed. ${content}`);
+        }
+        catch {
+            throw new Error(`Installation of ${src} failed. ${error}`);
+        }
     });
-    if (failed || (execOutput && execOutput.exitCode != 0)) {
-        const content = await fs.readFile(tmpInstallationLogFile, 'utf-8');
-        throw new Error(`Installation of ${src} failed. ${content}`);
-    }
-    await callback(tmpDir);
-    return tmpDir;
 }
 
 
