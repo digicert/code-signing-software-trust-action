@@ -8,15 +8,17 @@
 
 # Code signing with DigiCert® Software Trust Manager
 
-Code signing using DigiCert® Software Trust Manager with GitHub Actions is a streamlined, keypair-based signing workflow that improves software security and seamlessly integrates with DevOps processes to sign binaries on **Windows**, **Linux**, and **Mac**.
+Code signing using DigiCert® Software Trust Manager with GitHub Actions is a streamlined, keypair-based signing workflow that improves software security and seamlessly integrates with DevOps processes to sign binaries on **Windows**, **Linux**, and **macOS**.
 
 GitHub Actions automates the installation and configuration of Software Trust client tools, enabling developers to quickly become signing-ready for workflows on [GitHub-hosted runners][github-hosted-runners-ref] and [self-hosted runners][self-hosted-runners-ref].
 
 Additionally, Software Trust with GitHub Actions offers **simple signing**, a mode which allows users to sign without the need of third-party tools or libraries.
 
+ **DigiCert Binary Signing** includes all existing code signing capabilities as [the legacy Code signing with Software Trust Manager](https://github.com/marketplace/actions/code-signing-with-software-trust-manager), along with additional enhancements that simplify and scale your signing workflows.
+
 ## Introduction to Software Trust
 
-Software Trust provides a solution to manage and automate your code signing workflows in a secure way. 
+Software Trust provides a solution to manage and automate your code signing workflows in a secure way.
 
 **Software Trust will:**
 
@@ -41,7 +43,7 @@ As a best practice, consider enabling simple signing mode for your new implement
 
 Simple signing mode:
 
-- **Simplifies your workflow**: There is no need for third-party signing tools (SignTool, Jarsigner, etc.) or intermediate libraries (smksp, smpkcs11, etc.).
+- **Simplifies your workflow**: There is no need for third-party signing tools (SignTool, Jarsigner, etc.) or intermediate libraries (KSP, PKCS#11, etc.).
 - **Offers cross-platform support**: This mode works seamlessly across Windows, Linux, and macOS.
 - **Provides a unified signing experience**: There is a single, consistent approach for all supported file types.
 - **Is future ready**: As we deprecate legacy signing methods, this mode is aligned with our strategic direction.
@@ -65,7 +67,49 @@ Copy and paste one of the following steps into your GitHub Actions workflow YAML
 
 To learn more about these steps, see [action.yml](action.yml).
 
-**Option 1: Software Trust with standard features:**
+#### For Windows
+
+*Option 1: Software Trust with standard features:*
+
+```yaml
+steps:
+  - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
+    run: |
+      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/sm_client_cert.p12
+      shell: bash
+  - name: Setup Software Trust Manager
+    uses: digicert/code-signing-software-trust-action@v1
+      SM_HOST: ${{ vars.SM_HOST }}
+      SM_API_KEY: ${{ secrets.SM_API_KEY }}
+      SM_CLIENT_CERT_FILE: D:\\Certificate_pkcs12.p12
+      SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+```
+
+*Option 2: Software Trust with simple signing **(recommended)**:*
+
+```yaml
+steps:
+  - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
+    run: |
+      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/sm_client_cert.p12
+      shell: bash
+  - name: Setup Software Trust Manager
+    uses: digicert/code-signing-software-trust-action@v1
+    with:
+      simple-signing-mode: true
+      # If the below 2 parameters are supplied, then smctl executable is invoked to attempt the signing.
+      input: <file or directory with list of supported files to sign>
+      keypair-alias: <a Software Trust Manager keypair to sign with>
+    env:
+      SM_HOST: ${{ vars.SM_HOST }}
+      SM_API_KEY: ${{ secrets.SM_API_KEY }}
+      SM_CLIENT_CERT_FILE: D:\\Certificate_pkcs12.p12
+      SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+```
+
+#### For Ubuntu and macOS
+
+*Option 1: Software Trust with standard features:*
 
 ```yaml
 steps:
@@ -83,7 +127,7 @@ steps:
       SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
 ```
 
-**Option 2: Software Trust with simple signing:**
+*Option 2: Software Trust with simple signing **(recommended)**:*
 
 ```yaml
 steps:
