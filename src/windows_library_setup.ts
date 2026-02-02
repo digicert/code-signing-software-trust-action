@@ -6,7 +6,7 @@ import { SMCTL } from './tool_setup';
 import { randomFileName, tmpDir } from './utils';
 
 export async function setupLibraries(smtoolsPath: string) {
-    const cspResitryCommands = `
+    const cspRegistryCommands = `
         @echo off
         @REM For ssmcsp-x86
         reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /f
@@ -110,9 +110,9 @@ export async function setupLibraries(smtoolsPath: string) {
     `;
 
     const batchFile = path.join(tmpDir, `${randomFileName()}.bat`);
-    await fs.writeFile(batchFile, cspResitryCommands, {flush: true});
+    await fs.writeFile(batchFile, cspRegistryCommands, {flush: true});
 
-    core.info(`Registring KSP and CSP on the system`);
+    core.info(`Registering KSP and CSP on the system`);
     const smctl = path.join(smtoolsPath, SMCTL);
 
     await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);

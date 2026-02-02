@@ -916,7 +916,7 @@ const path_1 = __importDefault(__nccwpck_require__(16928));
 const tool_setup_1 = __nccwpck_require__(63082);
 const utils_1 = __nccwpck_require__(69277);
 async function setupLibraries(smtoolsPath) {
-    const cspResitryCommands = `
+    const cspRegistryCommands = `
         @echo off
         @REM For ssmcsp-x86
         reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Cryptography\\Defaults\\Provider\\DigiCert Software Trust Manager CSP" /f
@@ -1019,8 +1019,8 @@ async function setupLibraries(smtoolsPath) {
         )
     `;
     const batchFile = path_1.default.join(utils_1.tmpDir, `${(0, utils_1.randomFileName)()}.bat`);
-    await fs.writeFile(batchFile, cspResitryCommands, { flush: true });
-    core.info(`Registring KSP and CSP on the system`);
+    await fs.writeFile(batchFile, cspRegistryCommands, { flush: true });
+    core.info(`Registering KSP and CSP on the system`);
     const smctl = path_1.default.join(smtoolsPath, tool_setup_1.SMCTL);
     await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);
     const system32 = `${process.env['SystemRoot']}\\System32`;
