@@ -75,10 +75,11 @@ To learn more about these steps, see [action.yml](action.yml).
 steps:
   - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
     run: |
-      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/sm_client_cert.p12
+      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
       shell: bash
   - name: Setup Software Trust Manager
     uses: digicert/code-signing-software-trust-action@v1
+    env:
       SM_HOST: ${{ vars.SM_HOST }}
       SM_API_KEY: ${{ secrets.SM_API_KEY }}
       SM_CLIENT_CERT_FILE: D:\\Certificate_pkcs12.p12
@@ -91,7 +92,7 @@ steps:
 steps:
   - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
     run: |
-      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/sm_client_cert.p12
+      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
       shell: bash
   - name: Setup Software Trust Manager
     uses: digicert/code-signing-software-trust-action@v1
