@@ -826,7 +826,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isValidStr = exports.cacheDirPathFor = exports.runnerType = exports.randomTmpDir = exports.randomDirName = exports.randomFileName = exports.isSelfHosted = exports.toolCacheDir = exports.tmpDir = exports.RunnerType = void 0;
+exports.isValidStr = exports.cacheDirPathFor = exports.runnerType = exports.createSecureTempDir = exports.randomTmpDir = exports.randomDirName = exports.randomFileName = exports.isSelfHosted = exports.toolCacheDir = exports.tmpDir = exports.RunnerType = void 0;
 exports.rmDir = rmDir;
 const core = __importStar(__nccwpck_require__(37484));
 const fs = __importStar(__nccwpck_require__(91943));
@@ -849,6 +849,24 @@ const randomDirName = () => `D_${crypto.randomUUID()}`;
 exports.randomDirName = randomDirName;
 const randomTmpDir = () => path_1.default.join(exports.tmpDir, (0, exports.randomDirName)());
 exports.randomTmpDir = randomTmpDir;
+/**
+ * Creates a secure temporary directory with restricted permissions.
+ * This mitigates security risks associated with predictable temporary file creation
+ * by using a cryptographically random UUID and setting restrictive permissions.
+ *
+ * Addresses CWE-377: Insecure Temporary File
+ * @see https://cwe.mitre.org/data/definitions/377.html
+ *
+ * @param prefix - Optional prefix for the directory name (default: 'digicert-')
+ * @returns Promise<string> - The absolute path to the created secure temporary directory
+ * @throws Error if directory creation fails
+ */
+const createSecureTempDir = async (prefix = 'digicert-') => {
+    const uniqueTempDir = path_1.default.join(exports.tmpDir, `${prefix}${crypto.randomUUID()}`);
+    await fs.mkdir(uniqueTempDir, { mode: 0o700, recursive: true });
+    return uniqueTempDir;
+};
+exports.createSecureTempDir = createSecureTempDir;
 async function rmDir(path) {
     await fs.rm(path, { force: true, recursive: true }).catch(reason => {
         core.warning(`Failed to remove ${path}. Reason: ${reason}`);
@@ -1018,18 +1036,26 @@ async function setupLibraries(smtoolsPath) {
             exit /b %errorlevel%
         )
     `;
-    const batchFile = path_1.default.join(utils_1.tmpDir, `${(0, utils_1.randomFileName)()}.bat`);
-    await fs.writeFile(batchFile, cspRegistryCommands, { flush: true });
-    core.info(`Registering KSP and CSP on the system`);
-    const smctl = path_1.default.join(smtoolsPath, tool_setup_1.SMCTL);
-    await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);
-    const system32 = `${process.env['SystemRoot']}\\System32`;
-    const sysWOW64 = `${process.env['SystemRoot']}\\SysWOW64`;
-    await fs.copyFile(path_1.default.join(smtoolsPath, 'smksp-x64.dll'), path_1.default.join(system32, 'smksp.dll'));
-    await fs.copyFile(path_1.default.join(smtoolsPath, 'smksp-x86.dll'), path_1.default.join(sysWOW64, 'smksp.dll'));
-    await fs.copyFile(path_1.default.join(smtoolsPath, 'ssmcsp-x64.dll'), path_1.default.join(system32, 'ssmcsp.dll'));
-    await fs.copyFile(path_1.default.join(smtoolsPath, 'ssmcsp-x86.dll'), path_1.default.join(sysWOW64, 'ssmcsp.dll'));
+    // Create a secure temporary directory with restricted permissions (mode 0o700)
+    // This prevents race conditions and unauthorized access to the batch file
+    // Addresses CWE-377: Insecure Temporary File vulnerability reported by CodeQL
+    const uniqueTempDir = await (0, utils_1.createSecureTempDir)('csp-setup-');
+    const batchFile = path_1.default.join(uniqueTempDir, 'register-csp.bat');
     try {
+        // Write batch file with restricted permissions (owner only on Unix-like systems)
+        await fs.writeFile(batchFile, cspRegistryCommands, {
+            mode: 0o700, // rwx------ (owner only)
+            flush: true
+        });
+        core.info(`Registering KSP and CSP on the system`);
+        const smctl = path_1.default.join(smtoolsPath, tool_setup_1.SMCTL);
+        await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);
+        const system32 = `${process.env['SystemRoot']}\\System32`;
+        const sysWOW64 = `${process.env['SystemRoot']}\\SysWOW64`;
+        await fs.copyFile(path_1.default.join(smtoolsPath, 'smksp-x64.dll'), path_1.default.join(system32, 'smksp.dll'));
+        await fs.copyFile(path_1.default.join(smtoolsPath, 'smksp-x86.dll'), path_1.default.join(sysWOW64, 'smksp.dll'));
+        await fs.copyFile(path_1.default.join(smtoolsPath, 'ssmcsp-x64.dll'), path_1.default.join(system32, 'ssmcsp.dll'));
+        await fs.copyFile(path_1.default.join(smtoolsPath, 'ssmcsp-x86.dll'), path_1.default.join(sysWOW64, 'ssmcsp.dll'));
         const result = await exec.getExecOutput(batchFile, [], { ignoreReturnCode: true });
         if (result.exitCode !== 0) {
             core.error(`Batch file execution failed with exit code ${result.exitCode}`);
@@ -1043,7 +1069,10 @@ async function setupLibraries(smtoolsPath) {
         throw error;
     }
     finally {
-        await fs.rm(batchFile);
+        // Always clean up the temporary directory, even if an error occurs
+        await fs.rm(uniqueTempDir, { recursive: true, force: true }).catch(err => {
+            core.warning(`Failed to clean up temporary directory ${uniqueTempDir}: ${err}`);
+        });
     }
 }
 ;

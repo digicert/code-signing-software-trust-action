@@ -3,7 +3,7 @@ import * as exec from '@actions/exec';
 import * as fs from 'fs/promises';
 import path from 'path';
 import { SMCTL } from './tool_setup';
-import { randomFileName, tmpDir } from './utils';
+import { createSecureTempDir } from './utils';
 
 export async function setupLibraries(smtoolsPath: string) {
     const cspRegistryCommands = `
@@ -109,24 +109,33 @@ export async function setupLibraries(smtoolsPath: string) {
         )
     `;
 
-    const batchFile = path.join(tmpDir, `${randomFileName()}.bat`);
-    await fs.writeFile(batchFile, cspRegistryCommands, {flush: true});
-
-    core.info(`Registering KSP and CSP on the system`);
-    const smctl = path.join(smtoolsPath, SMCTL);
-
-    await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);
-
-    const system32 = `${process.env['SystemRoot']}\\System32`;
-    const sysWOW64 = `${process.env['SystemRoot']}\\SysWOW64`;
-
-    await fs.copyFile(path.join(smtoolsPath, 'smksp-x64.dll'), path.join(system32, 'smksp.dll'));
-    await fs.copyFile(path.join(smtoolsPath, 'smksp-x86.dll'), path.join(sysWOW64, 'smksp.dll'));
-
-    await fs.copyFile(path.join(smtoolsPath, 'ssmcsp-x64.dll'), path.join(system32, 'ssmcsp.dll'));
-    await fs.copyFile(path.join(smtoolsPath, 'ssmcsp-x86.dll'), path.join(sysWOW64, 'ssmcsp.dll'));
-
+    // Create a secure temporary directory with restricted permissions (mode 0o700)
+    // This prevents race conditions and unauthorized access to the batch file
+    // Addresses CWE-377: Insecure Temporary File vulnerability reported by CodeQL
+    const uniqueTempDir = await createSecureTempDir('csp-setup-');
+    const batchFile = path.join(uniqueTempDir, 'register-csp.bat');
+    
     try {
+        // Write batch file with restricted permissions (owner only on Unix-like systems)
+        await fs.writeFile(batchFile, cspRegistryCommands, { 
+            mode: 0o700,  // rwx------ (owner only)
+            flush: true 
+        });
+
+        core.info(`Registering KSP and CSP on the system`);
+        const smctl = path.join(smtoolsPath, SMCTL);
+
+        await exec.getExecOutput(smctl, ["windows", "ksp", "register"]);
+
+        const system32 = `${process.env['SystemRoot']}\\System32`;
+        const sysWOW64 = `${process.env['SystemRoot']}\\SysWOW64`;
+
+        await fs.copyFile(path.join(smtoolsPath, 'smksp-x64.dll'), path.join(system32, 'smksp.dll'));
+        await fs.copyFile(path.join(smtoolsPath, 'smksp-x86.dll'), path.join(sysWOW64, 'smksp.dll'));
+
+        await fs.copyFile(path.join(smtoolsPath, 'ssmcsp-x64.dll'), path.join(system32, 'ssmcsp.dll'));
+        await fs.copyFile(path.join(smtoolsPath, 'ssmcsp-x86.dll'), path.join(sysWOW64, 'ssmcsp.dll'));
+
         const result = await exec.getExecOutput(batchFile, [], { ignoreReturnCode: true });
         if (result.exitCode !== 0) {
             core.error(`Batch file execution failed with exit code ${result.exitCode}`);
@@ -138,6 +147,9 @@ export async function setupLibraries(smtoolsPath: string) {
     } catch (error) {
         throw error;
     } finally {
-        await fs.rm(batchFile);
+        // Always clean up the temporary directory, even if an error occurs
+        await fs.rm(uniqueTempDir, { recursive: true, force: true }).catch(err => {
+            core.warning(`Failed to clean up temporary directory ${uniqueTempDir}: ${err}`);
+        });
     }
 };
