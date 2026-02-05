@@ -118,7 +118,7 @@ steps:
 steps:
   - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
     run: |
-      export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/sm_client_cert.p12
+      export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/Certificate_pkcs12.p12
       echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > ${SM_CLIENT_CERT_FILE}
     shell: bash
   - name: Setup Software Trust Manager
@@ -137,7 +137,7 @@ steps:
 steps:
   - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
     run: |
-      export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/sm_client_cert.p12
+      export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/Certificate_pkcs12.p12
       echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > ${SM_CLIENT_CERT_FILE}
     shell: bash
   - name: Setup Software Trust Manager
@@ -193,7 +193,7 @@ Review the following variables that you can use to customize your setup:
 >   steps:
 >  - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
 >    run: |
->      export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/sm_client_cert.p12
+>      export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/Certificate_pkcs12.p12
 >      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > ${SM_CLIENT_CERT_FILE}
 >    shell: bash
 > ```
