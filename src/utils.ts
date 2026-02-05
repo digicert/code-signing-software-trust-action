@@ -22,6 +22,24 @@ export const randomDirName  = (): string => `D_${crypto.randomUUID()}`;
 
 export const randomTmpDir = (): string => path.join(tmpDir, randomDirName());
 
+/**
+ * Creates a secure temporary directory with restricted permissions.
+ * This mitigates security risks associated with predictable temporary file creation
+ * by using a cryptographically random UUID and setting restrictive permissions.
+ * 
+ * Addresses CWE-377: Insecure Temporary File
+ * @see https://cwe.mitre.org/data/definitions/377.html
+ * 
+ * @param prefix - Optional prefix for the directory name (default: 'digicert-')
+ * @returns Promise<string> - The absolute path to the created secure temporary directory
+ * @throws Error if directory creation fails
+ */
+export const createSecureTempDir = async (prefix: string = 'digicert-'): Promise<string> => {
+    const uniqueTempDir = path.join(tmpDir, `${prefix}${crypto.randomUUID()}`);
+    await fs.mkdir(uniqueTempDir, { mode: 0o700, recursive: true });
+    return uniqueTempDir;
+};
+
 export async function rmDir(path: string) {
     await fs.rm(path, {force: true, recursive: true}).catch(reason => {
         core.warning(`Failed to remove ${path}. Reason: ${reason}`);
