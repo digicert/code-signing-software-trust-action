@@ -76,7 +76,7 @@ steps:
   - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
     run: |
       echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
-      shell: bash
+    shell: bash
   - name: Setup Software Trust Manager
     uses: digicert/code-signing-software-trust-action@v1
     env:
@@ -84,6 +84,7 @@ steps:
       SM_API_KEY: ${{ secrets.SM_API_KEY }}
       SM_CLIENT_CERT_FILE: D:\\Certificate_pkcs12.p12
       SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+    shell: bash
 ```
 
 *Option 2: Software Trust with simple signing **(recommended)**:*
@@ -93,7 +94,7 @@ steps:
   - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
     run: |
       echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
-      shell: bash
+    shell: bash
   - name: Setup Software Trust Manager
     uses: digicert/code-signing-software-trust-action@v1
     with:
@@ -106,6 +107,7 @@ steps:
       SM_API_KEY: ${{ secrets.SM_API_KEY }}
       SM_CLIENT_CERT_FILE: D:\\Certificate_pkcs12.p12
       SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+    shell: bash
 ```
 
 #### For Ubuntu and macOS
@@ -118,7 +120,7 @@ steps:
     run: |
       export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/sm_client_cert.p12
       echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > ${SM_CLIENT_CERT_FILE}
-      shell: bash
+    shell: bash
   - name: Setup Software Trust Manager
     uses: digicert/code-signing-software-trust-action@v1
     env:
@@ -126,6 +128,7 @@ steps:
       SM_API_KEY: ${{ secrets.SM_API_KEY }}
       SM_CLIENT_CERT_FILE: ${SM_CLIENT_CERT_FILE}
       SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+    shell: bash
 ```
 
 *Option 2: Software Trust with simple signing **(recommended)**:*
@@ -136,7 +139,7 @@ steps:
     run: |
       export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/sm_client_cert.p12
       echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > ${SM_CLIENT_CERT_FILE}
-      shell: bash
+    shell: bash
   - name: Setup Software Trust Manager
     uses: digicert/code-signing-software-trust-action@v1
     with:
@@ -149,6 +152,7 @@ steps:
       SM_API_KEY: ${{ secrets.SM_API_KEY }}
       SM_CLIENT_CERT_FILE: ${SM_CLIENT_CERT_FILE}
       SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+    shell: bash
 ```
 
 
@@ -191,7 +195,7 @@ Review the following variables that you can use to customize your setup:
 >    run: |
 >      export SM_CLIENT_CERT_FILE=${RUNNER_TEMP_DIR}/sm_client_cert.p12
 >      echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > ${SM_CLIENT_CERT_FILE}
->      shell: bash
+>    shell: bash
 > ```
 >
 > The `base64` command is available by default on **Linux** and **macOS**. For **Windows** runners, verify that the command is supported.
@@ -215,11 +219,13 @@ The following outputs are provided by this action:
     SM_API_KEY: ${{ secrets.SM_API_KEY }}
     SM_CLIENT_CERT_FILE: ${{ env.SM_CLIENT_CERT_FILE }}
     SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+  shell: bash
 
 - name: Use PKCS11 config in subsequent step
   run: |
     echo "PKCS11 config file location: ${{ steps.stm-setup.outputs.PKCS11_CONFIG }}"
     # Use the config file with your signing tool
+  shell: bash
 ```
 
 ## User guides / documentation 
