@@ -12,7 +12,6 @@ export enum RunnerType {
 export type archiveExtractCallback = (dest: string) => Promise<void>;
 
 export const tmpDir = process.env['RUNNER_TEMP'] ||  tmpdir();
-export const toolCacheDir = process.env['RUNNER_TOOL_CACHE'];
 export const isSelfHosted =  
     (process.env['RUNNER_ENVIRONMENT'] !== 'github-hosted') && 
     (process.env['AGENT_ISSELFHOSTED'] === '1' || process.env['AGENT_ISSELFHOSTED'] === undefined);
@@ -48,8 +47,9 @@ export async function rmDir(path: string) {
 
 export const runnerType = isSelfHosted ? RunnerType.SELF_HOSTED : RunnerType.GITHUB_RUNNER;
 
-export const cacheDirPathFor = (name: string): string | any => {
-    return !toolCacheDir ? toolCacheDir : path.join(toolCacheDir, name);
+export const cacheDirPathFor = (name: string): string | undefined => {
+    const toolCacheDir = process.env['RUNNER_TOOL_CACHE'];
+    return !toolCacheDir ? undefined : path.join(toolCacheDir, name);
 }
 
 export const isValidStr = (val: string): boolean => val.trim().length > 0 ? true : false;

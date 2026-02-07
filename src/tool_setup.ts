@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import { extractDmg } from './macos_dmg_setup';
-import { archiveExtractCallback, isSelfHosted, toolCacheDir } from './utils';
+import { archiveExtractCallback, isSelfHosted } from './utils';
 import { installMsi } from './windows_msi_setup';
 import { wrapInDirectory } from './file_noop_setup';
 import { extractTar, extractZip } from './zip_setup';
@@ -357,6 +357,7 @@ export async function setupTool(name: string) {
     var cacheHit: string | undefined;
     const p = core.platform;
     const cacheKey = `${name}-${core.getInput('cache-version')}-${p.platform}-${p.arch}`;
+    const toolCacheDir = process.env['RUNNER_TOOL_CACHE'];
     const cachePath = toolCacheDir ? path.join(toolCacheDir, tm.name) : undefined;
 
     if (tryGithubCache && cachePath) {
