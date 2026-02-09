@@ -324,9 +324,28 @@ const utils_1 = __nccwpck_require__(69277);
 async function extractDmg(dmgFile, callback) {
     const volume = path.join('/Volumes', (0, utils_1.randomDirName)());
     core.info(`Mounting DMG file ${dmgFile} to volume ${volume}`);
-    await exec.getExecOutput("hdiutil", ["attach", dmgFile, "-mountpoint", volume]);
-    await callback(volume);
-    return volume;
+    let mounted = false;
+    try {
+        await exec.getExecOutput("hdiutil", ["attach", dmgFile, "-mountpoint", volume]);
+        mounted = true;
+        await callback(volume);
+        return volume;
+    }
+    finally {
+        // Always attempt to unmount, even if callback fails
+        if (mounted) {
+            try {
+                core.info(`Unmounting DMG volume ${volume}`);
+                await exec.getExecOutput("hdiutil", ["detach", volume], {
+                    ignoreReturnCode: true // Don't fail if unmount has issues
+                });
+            }
+            catch (err) {
+                // Log warning but don't fail - volume might already be unmounted
+                core.warning(`Failed to unmount DMG volume ${volume}: ${err}`);
+            }
+        }
+    }
 }
 
 
