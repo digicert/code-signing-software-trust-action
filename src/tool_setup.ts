@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import { extractDmg } from './macos_dmg_setup';
-import { archiveExtractCallback, isSelfHosted } from './utils';
+import { archiveExtractCallback, calculateSHA256, isSelfHosted } from './utils';
 import { installMsi } from './windows_msi_setup';
 import { wrapInDirectory } from './file_noop_setup';
 import { extractTar, extractZip } from './zip_setup';
@@ -222,6 +222,16 @@ function qulifiedToolName(name: string, os?: string, arch?: string): string {
 
 function downloadUrl(tool: ToolMetadata) {
     const cdn = core.getInput('digicert-cdn', {required: true});
+    
+    // Security: Validate that CDN URL uses HTTPS to prevent MITM attacks
+    if (!cdn.startsWith('https://')) {
+        throw new Error(
+            `Invalid digicert-cdn URL: "${cdn}". ` +
+            `The CDN URL must use HTTPS protocol for security. ` +
+            `HTTP or other protocols are not allowed to prevent man-in-the-middle attacks.`
+        );
+    }
+    
     return `${cdn}/${tool.dlName}`;
 };
 
@@ -252,6 +262,8 @@ async function cachedSetup(tool: ToolMetadata) {
     });
     const toolDownloadUrl = downloadUrl(tool);
     var version = VERSION;
+    let expectedChecksum: string | undefined;
+    
     const useBinarySha256Checksum = core.getBooleanInput('use-binary-sha256-checksum', {required: false});
     if (useBinarySha256Checksum) {
         core.info(`Using sha256 checksum file for determining the version of ${tool.name}`);
@@ -259,7 +271,8 @@ async function cachedSetup(tool: ToolMetadata) {
         version = await tc.downloadTool(sha256ChecksumUrl).then(async rv => {
             core.info(`Downloaded sha256 checksum file from ${sha256ChecksumUrl}`);
             const content = await fs.readFile(rv, {encoding: 'utf-8'});
-            const checksum = content.split(' ')[0].trim();
+            const checksum = content.split(' ')[0].trim().toLowerCase();
+            expectedChecksum = checksum; // Store for later verification
             core.info(`Using sha256 checksum ${checksum} as version for ${tool.name}`);
             return `0.0.0-${checksum}`;
         }).catch(reason => {
@@ -284,6 +297,33 @@ async function cachedSetup(tool: ToolMetadata) {
             core.info(`${tool.name} downloaded @ ${rv}`);
             return rv;
         });
+
+        // Security: Verify checksum of downloaded binary to prevent supply chain attacks
+        if (expectedChecksum) {
+            core.info(`Verifying SHA-256 checksum of downloaded ${tool.name}...`);
+            const actualChecksum = await calculateSHA256(downloadedPath);
+            
+            if (actualChecksum !== expectedChecksum) {
+                throw new Error(
+                    `SECURITY ERROR: SHA-256 checksum verification failed for ${tool.name}!\n` +
+                    `Expected: ${expectedChecksum}\n` +
+                    `Actual:   ${actualChecksum}\n` +
+                    `This indicates the downloaded file may have been tampered with or corrupted.\n` +
+                    `Download URL: ${toolDownloadUrl}\n` +
+                    `DO NOT proceed with installation. Please report this to DigiCert support.`
+                );
+            }
+            
+            core.info(`✓ Checksum verification passed for ${tool.name}`);
+            core.info(`  Expected: ${expectedChecksum}`);
+            core.info(`  Actual:   ${actualChecksum}`);
+        } else {
+            core.warning(
+                `Skipping checksum verification for ${tool.name} ` +
+                `(use-binary-sha256-checksum is disabled or checksum file unavailable). ` +
+                `This reduces security against supply chain attacks.`
+            );
+        }
 
         const outputDir = await postDownload(tool, downloadedPath, async(postPath: string) => {
             core.info(`Performing post download activities for ${postPath}`);

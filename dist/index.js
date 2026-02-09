@@ -617,6 +617,12 @@ function qulifiedToolName(name, os, arch) {
 ;
 function downloadUrl(tool) {
     const cdn = core.getInput('digicert-cdn', { required: true });
+    // Security: Validate that CDN URL uses HTTPS to prevent MITM attacks
+    if (!cdn.startsWith('https://')) {
+        throw new Error(`Invalid digicert-cdn URL: "${cdn}". ` +
+            `The CDN URL must use HTTPS protocol for security. ` +
+            `HTTP or other protocols are not allowed to prevent man-in-the-middle attacks.`);
+    }
     return `${cdn}/${tool.dlName}`;
 }
 ;
@@ -652,6 +658,7 @@ async function cachedSetup(tool) {
     });
     const toolDownloadUrl = downloadUrl(tool);
     var version = VERSION;
+    let expectedChecksum;
     const useBinarySha256Checksum = core.getBooleanInput('use-binary-sha256-checksum', { required: false });
     if (useBinarySha256Checksum) {
         core.info(`Using sha256 checksum file for determining the version of ${tool.name}`);
@@ -659,7 +666,8 @@ async function cachedSetup(tool) {
         version = await tc.downloadTool(sha256ChecksumUrl).then(async (rv) => {
             core.info(`Downloaded sha256 checksum file from ${sha256ChecksumUrl}`);
             const content = await fs.readFile(rv, { encoding: 'utf-8' });
-            const checksum = content.split(' ')[0].trim();
+            const checksum = content.split(' ')[0].trim().toLowerCase();
+            expectedChecksum = checksum; // Store for later verification
             core.info(`Using sha256 checksum ${checksum} as version for ${tool.name}`);
             return `0.0.0-${checksum}`;
         }).catch(reason => {
@@ -685,6 +693,27 @@ async function cachedSetup(tool) {
             core.info(`${tool.name} downloaded @ ${rv}`);
             return rv;
         });
+        // Security: Verify checksum of downloaded binary to prevent supply chain attacks
+        if (expectedChecksum) {
+            core.info(`Verifying SHA-256 checksum of downloaded ${tool.name}...`);
+            const actualChecksum = await (0, utils_1.calculateSHA256)(downloadedPath);
+            if (actualChecksum !== expectedChecksum) {
+                throw new Error(`SECURITY ERROR: SHA-256 checksum verification failed for ${tool.name}!\n` +
+                    `Expected: ${expectedChecksum}\n` +
+                    `Actual:   ${actualChecksum}\n` +
+                    `This indicates the downloaded file may have been tampered with or corrupted.\n` +
+                    `Download URL: ${toolDownloadUrl}\n` +
+                    `DO NOT proceed with installation. Please report this to DigiCert support.`);
+            }
+            core.info(`✓ Checksum verification passed for ${tool.name}`);
+            core.info(`  Expected: ${expectedChecksum}`);
+            core.info(`  Actual:   ${actualChecksum}`);
+        }
+        else {
+            core.warning(`Skipping checksum verification for ${tool.name} ` +
+                `(use-binary-sha256-checksum is disabled or checksum file unavailable). ` +
+                `This reduces security against supply chain attacks.`);
+        }
         const outputDir = await postDownload(tool, downloadedPath, async (postPath) => {
             core.info(`Performing post download activities for ${postPath}`);
         });
@@ -829,6 +858,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.isValidStr = exports.cacheDirPathFor = exports.runnerType = exports.createSecureTempDir = exports.randomTmpDir = exports.randomDirName = exports.randomFileName = exports.isSelfHosted = exports.tmpDir = exports.RunnerType = void 0;
 exports.rmDir = rmDir;
+exports.calculateSHA256 = calculateSHA256;
 const core = __importStar(__nccwpck_require__(37484));
 const fs = __importStar(__nccwpck_require__(91943));
 const crypto = __importStar(__nccwpck_require__(76982));
@@ -881,6 +911,20 @@ const cacheDirPathFor = (name) => {
 exports.cacheDirPathFor = cacheDirPathFor;
 const isValidStr = (val) => val.trim().length > 0 ? true : false;
 exports.isValidStr = isValidStr;
+/**
+ * Calculate SHA-256 checksum of a file.
+ * Used to verify integrity of downloaded binaries to prevent supply chain attacks.
+ *
+ * @param filePath - Absolute path to the file to hash
+ * @returns Promise<string> - The SHA-256 checksum in lowercase hexadecimal format
+ * @throws Error if file cannot be read
+ */
+async function calculateSHA256(filePath) {
+    const fileBuffer = await fs.readFile(filePath);
+    const hashSum = crypto.createHash('sha256');
+    hashSum.update(fileBuffer);
+    return hashSum.digest('hex').toLowerCase();
+}
 
 
 /***/ }),

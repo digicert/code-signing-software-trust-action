@@ -53,3 +53,18 @@ export const cacheDirPathFor = (name: string): string | undefined => {
 }
 
 export const isValidStr = (val: string): boolean => val.trim().length > 0 ? true : false;
+
+/**
+ * Calculate SHA-256 checksum of a file.
+ * Used to verify integrity of downloaded binaries to prevent supply chain attacks.
+ * 
+ * @param filePath - Absolute path to the file to hash
+ * @returns Promise<string> - The SHA-256 checksum in lowercase hexadecimal format
+ * @throws Error if file cannot be read
+ */
+export async function calculateSHA256(filePath: string): Promise<string> {
+    const fileBuffer = await fs.readFile(filePath);
+    const hashSum = crypto.createHash('sha256');
+    hashSum.update(fileBuffer);
+    return hashSum.digest('hex').toLowerCase();
+}

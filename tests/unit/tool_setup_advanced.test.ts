@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import { setupTool, SMCTL, SMTOOLS, SMPKCS11 } from '../../src/tool_setup';
+import * as utils from '../../src/utils';
 import { 
     mockInputs, 
     mockOutputs,
@@ -24,6 +25,9 @@ import { getExecOutput, resetMocks as resetExecMocks } from '../__mocks__/@actio
 // Increase timeout for integration-style tests
 jest.setTimeout(60000);
 
+// Mock calculateSHA256 for security fix tests
+jest.spyOn(utils, 'calculateSHA256');
+
 describe('tool_setup.ts - Advanced Coverage Tests', () => {
 
     beforeEach(() => {
@@ -39,6 +43,9 @@ describe('tool_setup.ts - Advanced Coverage Tests', () => {
         mockInputs.set('use-binary-sha256-checksum', 'false');
         mockInputs.set('use-github-caching-service', 'false');
         mockInputs.set('simple-signing-mode', 'false');
+        
+        // Mock calculateSHA256 to return 'mock' checksum by default
+        jest.spyOn(utils, 'calculateSHA256').mockImplementation(async () => 'mock');
     });
 
     afterEach(() => {
@@ -430,13 +437,12 @@ describe('tool_setup.ts - Advanced Coverage Tests', () => {
             expect(result !== undefined || result === undefined).toBe(true);
         });
 
-        test('should handle CDN URL without protocol', async () => {
+        test('should reject CDN URL without HTTPS protocol', async () => {
             mockInputs.set('digicert-cdn', 'cdn.example.com');
             
-            const result = await setupTool(SMCTL);
-            
-            // May fail but should not throw
-            expect(result !== undefined || result === undefined).toBe(true);
+            // Should throw error due to security validation
+            await expect(setupTool(SMCTL)).rejects.toThrow('Invalid digicert-cdn URL');
+            await expect(setupTool(SMCTL)).rejects.toThrow('must use HTTPS protocol');
         });
     });
 

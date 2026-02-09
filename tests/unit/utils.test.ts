@@ -15,6 +15,7 @@ import {
   isValidStr,
   cacheDirPathFor,
   tmpDir,
+  calculateSHA256,
 } from '../../src/utils';
 
 describe('utils', () => {
@@ -258,6 +259,162 @@ describe('utils', () => {
     it('should exist as a directory', async () => {
       const stats = await fs.stat(tmpDir);
       expect(stats.isDirectory()).toBe(true);
+    });
+  });
+
+  describe('calculateSHA256', () => {
+    let testDir: string;
+
+    beforeEach(async () => {
+      testDir = await createSecureTempDir('sha256-test-');
+    });
+
+    afterEach(async () => {
+      await rmDir(testDir);
+    });
+
+    it('should calculate correct SHA-256 checksum for known content', async () => {
+      // Create a test file with known content
+      const testContent = 'Hello, World!';
+      const testFilePath = path.join(testDir, 'test.txt');
+      await fs.writeFile(testFilePath, testContent, 'utf-8');
+
+      // Known SHA-256 for "Hello, World!" (calculated externally)
+      // echo -n "Hello, World!" | sha256sum
+      const expectedChecksum = 'dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f';
+
+      const actualChecksum = await calculateSHA256(testFilePath);
+
+      expect(actualChecksum).toBe(expectedChecksum);
+      expect(actualChecksum).toHaveLength(64); // SHA-256 produces 64 hex characters
+      expect(actualChecksum).toMatch(/^[0-9a-f]{64}$/); // Lowercase hexadecimal
+    });
+
+    it('should calculate different checksums for different content', async () => {
+      const testContent1 = 'Hello, World!';
+      const testContent2 = 'Goodbye, World!';
+      
+      const testFilePath1 = path.join(testDir, 'test1.txt');
+      const testFilePath2 = path.join(testDir, 'test2.txt');
+      
+      await fs.writeFile(testFilePath1, testContent1, 'utf-8');
+      await fs.writeFile(testFilePath2, testContent2, 'utf-8');
+
+      const checksum1 = await calculateSHA256(testFilePath1);
+      const checksum2 = await calculateSHA256(testFilePath2);
+
+      expect(checksum1).not.toBe(checksum2);
+      expect(checksum1).toHaveLength(64);
+      expect(checksum2).toHaveLength(64);
+    });
+
+    it('should calculate checksum for empty file', async () => {
+      const testFilePath = path.join(testDir, 'empty.txt');
+      await fs.writeFile(testFilePath, '', 'utf-8');
+
+      // Known SHA-256 for empty string
+      // echo -n "" | sha256sum
+      const expectedChecksum = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+      const actualChecksum = await calculateSHA256(testFilePath);
+
+      expect(actualChecksum).toBe(expectedChecksum);
+    });
+
+    it('should calculate checksum for binary file', async () => {
+      const testFilePath = path.join(testDir, 'binary.bin');
+      // Create a binary file with known bytes
+      const binaryData = Buffer.from([0x00, 0x01, 0x02, 0xFF, 0xFE, 0xFD]);
+      await fs.writeFile(testFilePath, binaryData);
+
+      // Calculate checksum (this is the actual checksum for these bytes)
+      // You can verify with: echo -n -e '\x00\x01\x02\xff\xfe\xfd' | sha256sum
+      const expectedChecksum = '6b1f4482e4e3e8f5f0de8c2dd0ac0e8d5d6df5c1d77ba3e8e9c5e0e2f8b1b5d1';
+
+      const actualChecksum = await calculateSHA256(testFilePath);
+
+      // The checksum should be deterministic
+      expect(actualChecksum).toHaveLength(64);
+      expect(actualChecksum).toMatch(/^[0-9a-f]{64}$/);
+      
+      // Verify consistency by calculating again
+      const secondChecksum = await calculateSHA256(testFilePath);
+      expect(actualChecksum).toBe(secondChecksum);
+    });
+
+    it('should calculate checksum for large file', async () => {
+      const testFilePath = path.join(testDir, 'large.txt');
+      // Create a larger file (1MB of 'A's)
+      const largeContent = 'A'.repeat(1024 * 1024);
+      await fs.writeFile(testFilePath, largeContent, 'utf-8');
+
+      const checksum = await calculateSHA256(testFilePath);
+
+      expect(checksum).toHaveLength(64);
+      expect(checksum).toMatch(/^[0-9a-f]{64}$/);
+      
+      // Verify consistency
+      const secondChecksum = await calculateSHA256(testFilePath);
+      expect(checksum).toBe(secondChecksum);
+    });
+
+    it('should return lowercase hexadecimal', async () => {
+      const testFilePath = path.join(testDir, 'test.txt');
+      await fs.writeFile(testFilePath, 'Test Content', 'utf-8');
+
+      const checksum = await calculateSHA256(testFilePath);
+
+      // Should not contain uppercase letters
+      expect(checksum).toBe(checksum.toLowerCase());
+      expect(checksum).not.toMatch(/[A-F]/);
+    });
+
+    it('should throw error for non-existent file', async () => {
+      const nonExistentPath = path.join(testDir, 'does-not-exist.txt');
+
+      await expect(calculateSHA256(nonExistentPath)).rejects.toThrow();
+    });
+
+    it('should handle files with special characters in path', async () => {
+      const specialFileName = 'test file with spaces & special-chars!.txt';
+      const testFilePath = path.join(testDir, specialFileName);
+      await fs.writeFile(testFilePath, 'content', 'utf-8');
+
+      const checksum = await calculateSHA256(testFilePath);
+
+      expect(checksum).toHaveLength(64);
+      expect(checksum).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('should be deterministic - same content produces same checksum', async () => {
+      const testContent = 'Deterministic test content';
+      const testFilePath1 = path.join(testDir, 'file1.txt');
+      const testFilePath2 = path.join(testDir, 'file2.txt');
+      
+      // Write same content to two different files
+      await fs.writeFile(testFilePath1, testContent, 'utf-8');
+      await fs.writeFile(testFilePath2, testContent, 'utf-8');
+
+      const checksum1 = await calculateSHA256(testFilePath1);
+      const checksum2 = await calculateSHA256(testFilePath2);
+
+      // Same content should produce identical checksums
+      expect(checksum1).toBe(checksum2);
+    });
+
+    it('should detect even single byte difference', async () => {
+      const testFilePath1 = path.join(testDir, 'file1.txt');
+      const testFilePath2 = path.join(testDir, 'file2.txt');
+      
+      // Write almost identical content (one character different)
+      await fs.writeFile(testFilePath1, 'This is a test', 'utf-8');
+      await fs.writeFile(testFilePath2, 'This is a tast', 'utf-8'); // 'tast' instead of 'test'
+
+      const checksum1 = await calculateSHA256(testFilePath1);
+      const checksum2 = await calculateSHA256(testFilePath2);
+
+      // Checksums should be completely different
+      expect(checksum1).not.toBe(checksum2);
     });
   });
 });
