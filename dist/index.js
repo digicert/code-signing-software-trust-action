@@ -257,10 +257,15 @@ async function main() {
                 await (0, tool_setup_1.setupTool)(tool_setup_1.SMTOOLS);
                 break;
             case 'darwin':
-                await (0, tool_setup_1.setupTool)(tool_setup_1.SMCTL);
-                await (0, tool_setup_1.setupTool)(tool_setup_1.SMCTK);
-                await (0, tool_setup_1.setupTool)(tool_setup_1.SMPKCS11);
-                await (0, tool_setup_1.setupTool)(tool_setup_1.SCD);
+                // Parallel tool setup for macOS - all 4 tools are independent
+                core.info('Downloading and installing 4 macOS tools in parallel...');
+                await Promise.all([
+                    (0, tool_setup_1.setupTool)(tool_setup_1.SMCTL),
+                    (0, tool_setup_1.setupTool)(tool_setup_1.SMCTK),
+                    (0, tool_setup_1.setupTool)(tool_setup_1.SMPKCS11),
+                    (0, tool_setup_1.setupTool)(tool_setup_1.SCD)
+                ]);
+                core.info('All macOS tools installed successfully');
                 break;
         }
         ;
