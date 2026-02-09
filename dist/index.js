@@ -687,7 +687,7 @@ async function cachedSetup(tool) {
     if (useBinarySha256Checksum) {
         core.info(`Using sha256 checksum file for determining the version of ${tool.name}`);
         const sha256ChecksumUrl = `${toolDownloadUrl}.sha256`;
-        version = await tc.downloadTool(sha256ChecksumUrl).then(async (rv) => {
+        version = await (0, utils_1.retryWithBackoff)(async () => await tc.downloadTool(sha256ChecksumUrl), `Download checksum file for ${tool.name} from ${sha256ChecksumUrl}`, { maxAttempts: 3, initialDelayMs: 1000 }).then(async (rv) => {
             core.info(`Downloaded sha256 checksum file from ${sha256ChecksumUrl}`);
             const content = await fs.readFile(rv, { encoding: 'utf-8' });
             const checksum = content.split(' ')[0].trim().toLowerCase();
@@ -713,7 +713,7 @@ async function cachedSetup(tool) {
         else {
             core.info(`Caching is disabled, downloading ${tool.name} from ${toolDownloadUrl}`);
         }
-        const downloadedPath = await tc.downloadTool(toolDownloadUrl).then(rv => {
+        const downloadedPath = await (0, utils_1.retryWithBackoff)(async () => await tc.downloadTool(toolDownloadUrl), `Download ${tool.name} from ${toolDownloadUrl}`, { maxAttempts: 3, initialDelayMs: 1000 }).then(rv => {
             core.info(`${tool.name} downloaded @ ${rv}`);
             return rv;
         });
@@ -883,6 +883,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.isValidStr = exports.cacheDirPathFor = exports.runnerType = exports.createSecureTempDir = exports.randomTmpDir = exports.randomDirName = exports.randomFileName = exports.isSelfHosted = exports.tmpDir = exports.RunnerType = void 0;
 exports.rmDir = rmDir;
 exports.calculateSHA256 = calculateSHA256;
+exports.retryWithBackoff = retryWithBackoff;
 const core = __importStar(__nccwpck_require__(37484));
 const fs = __importStar(__nccwpck_require__(91943));
 const crypto = __importStar(__nccwpck_require__(76982));
@@ -948,6 +949,53 @@ async function calculateSHA256(filePath) {
     const hashSum = crypto.createHash('sha256');
     hashSum.update(fileBuffer);
     return hashSum.digest('hex').toLowerCase();
+}
+/**
+ * Executes an async operation with exponential backoff retry logic.
+ * Useful for handling transient network failures during CDN downloads.
+ *
+ * @param operation - Async function to execute (should be idempotent)
+ * @param operationName - Human-readable name for logging
+ * @param config - Retry configuration
+ * @returns Promise<T> - Result of the operation
+ * @throws Error - The last error encountered if all retries fail
+ *
+ * @example
+ * const result = await retryWithBackoff(
+ *   async () => await tc.downloadTool(url),
+ *   'Download smctl',
+ *   { maxAttempts: 3, initialDelayMs: 1000 }
+ * );
+ */
+async function retryWithBackoff(operation, operationName, config = {}) {
+    const { maxAttempts = 3, initialDelayMs = 1000, backoffMultiplier = 2, maxDelayMs = 30000 } = config;
+    let lastError;
+    let delayMs = initialDelayMs;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            core.debug(`[Attempt ${attempt}/${maxAttempts}] ${operationName}`);
+            const result = await operation();
+            if (attempt > 1) {
+                core.info(`✓ ${operationName} succeeded on attempt ${attempt}/${maxAttempts}`);
+            }
+            return result;
+        }
+        catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            if (attempt < maxAttempts) {
+                core.warning(`⚠ ${operationName} failed (attempt ${attempt}/${maxAttempts}): ${lastError.message}`);
+                core.info(`Retrying in ${delayMs}ms with exponential backoff...`);
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                // Exponential backoff with cap
+                delayMs = Math.min(delayMs * backoffMultiplier, maxDelayMs);
+            }
+            else {
+                core.error(`✗ ${operationName} failed after ${maxAttempts} attempts: ${lastError.message}`);
+            }
+        }
+    }
+    throw lastError || new Error(`${operationName} failed after ${maxAttempts} attempts`);
 }
 
 

@@ -68,3 +68,85 @@ export async function calculateSHA256(filePath: string): Promise<string> {
     hashSum.update(fileBuffer);
     return hashSum.digest('hex').toLowerCase();
 }
+
+/**
+ * Retry configuration for download operations.
+ * Implements exponential backoff to handle transient network failures.
+ */
+export interface RetryConfig {
+    /** Maximum number of retry attempts (default: 3) */
+    maxAttempts?: number;
+    /** Initial delay in milliseconds before first retry (default: 1000ms) */
+    initialDelayMs?: number;
+    /** Multiplier for exponential backoff (default: 2) */
+    backoffMultiplier?: number;
+    /** Maximum delay between retries in milliseconds (default: 30000ms = 30s) */
+    maxDelayMs?: number;
+}
+
+/**
+ * Executes an async operation with exponential backoff retry logic.
+ * Useful for handling transient network failures during CDN downloads.
+ * 
+ * @param operation - Async function to execute (should be idempotent)
+ * @param operationName - Human-readable name for logging
+ * @param config - Retry configuration
+ * @returns Promise<T> - Result of the operation
+ * @throws Error - The last error encountered if all retries fail
+ * 
+ * @example
+ * const result = await retryWithBackoff(
+ *   async () => await tc.downloadTool(url),
+ *   'Download smctl',
+ *   { maxAttempts: 3, initialDelayMs: 1000 }
+ * );
+ */
+export async function retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    config: RetryConfig = {}
+): Promise<T> {
+    const {
+        maxAttempts = 3,
+        initialDelayMs = 1000,
+        backoffMultiplier = 2,
+        maxDelayMs = 30000
+    } = config;
+
+    let lastError: Error | undefined;
+    let delayMs = initialDelayMs;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            core.debug(`[Attempt ${attempt}/${maxAttempts}] ${operationName}`);
+            const result = await operation();
+            
+            if (attempt > 1) {
+                core.info(`✓ ${operationName} succeeded on attempt ${attempt}/${maxAttempts}`);
+            }
+            
+            return result;
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            
+            if (attempt < maxAttempts) {
+                core.warning(
+                    `⚠ ${operationName} failed (attempt ${attempt}/${maxAttempts}): ${lastError.message}`
+                );
+                core.info(`Retrying in ${delayMs}ms with exponential backoff...`);
+                
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                
+                // Exponential backoff with cap
+                delayMs = Math.min(delayMs * backoffMultiplier, maxDelayMs);
+            } else {
+                core.error(
+                    `✗ ${operationName} failed after ${maxAttempts} attempts: ${lastError.message}`
+                );
+            }
+        }
+    }
+
+    throw lastError || new Error(`${operationName} failed after ${maxAttempts} attempts`);
+}

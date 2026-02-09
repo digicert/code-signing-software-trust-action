@@ -6,7 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import { extractDmg } from './macos_dmg_setup';
-import { archiveExtractCallback, calculateSHA256, isSelfHosted } from './utils';
+import { archiveExtractCallback, calculateSHA256, isSelfHosted, retryWithBackoff } from './utils';
 import { installMsi } from './windows_msi_setup';
 import { wrapInDirectory } from './file_noop_setup';
 import { extractTar, extractZip } from './zip_setup';
@@ -268,7 +268,11 @@ async function cachedSetup(tool: ToolMetadata) {
     if (useBinarySha256Checksum) {
         core.info(`Using sha256 checksum file for determining the version of ${tool.name}`);
         const sha256ChecksumUrl = `${toolDownloadUrl}.sha256`;
-        version = await tc.downloadTool(sha256ChecksumUrl).then(async rv => {
+        version = await retryWithBackoff(
+            async () => await tc.downloadTool(sha256ChecksumUrl),
+            `Download checksum file for ${tool.name} from ${sha256ChecksumUrl}`,
+            { maxAttempts: 3, initialDelayMs: 1000 }
+        ).then(async rv => {
             core.info(`Downloaded sha256 checksum file from ${sha256ChecksumUrl}`);
             const content = await fs.readFile(rv, {encoding: 'utf-8'});
             const checksum = content.split(' ')[0].trim().toLowerCase();
@@ -293,7 +297,11 @@ async function cachedSetup(tool: ToolMetadata) {
         } else {
             core.info(`Caching is disabled, downloading ${tool.name} from ${toolDownloadUrl}`);
         }
-        const downloadedPath = await tc.downloadTool(toolDownloadUrl).then(rv => {
+        const downloadedPath = await retryWithBackoff(
+            async () => await tc.downloadTool(toolDownloadUrl),
+            `Download ${tool.name} from ${toolDownloadUrl}`,
+            { maxAttempts: 3, initialDelayMs: 1000 }
+        ).then(rv => {
             core.info(`${tool.name} downloaded @ ${rv}`);
             return rv;
         });
