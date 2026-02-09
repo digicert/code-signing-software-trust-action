@@ -23,7 +23,10 @@ inputs:
     required: false
   digest-alg:
     description: 'Digest(Hash) algorithm'
-    default: 'SHA-256'
+    default: ''
+    required: false
+  diegest-alg:
+    description: '[DEPRECATED] Use digest-alg instead. This parameter has a typo and will be removed in a future version.'
     required: false
   fail-fast:
     description: | 
