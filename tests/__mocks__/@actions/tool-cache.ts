@@ -1,7 +1,14 @@
 /**
  * Mock implementation of @actions/tool-cache
  * Used for testing tool download, extraction, and caching functionality
+ * 
+ * SECURITY NOTE: All input sanitization functions are included to prevent
+ * CodeQL security warnings about path traversal vulnerabilities in test code.
+ * While these are mocks for testing purposes, we sanitize inputs to demonstrate
+ * security best practices and prevent any potential exploitation through test data.
  */
+
+import * as path from 'path';
 
 // Mock state storage
 const mockExtractedPaths = new Map<string, string>();
@@ -14,6 +21,27 @@ export const cachedTools = mockCachedTools;
 export const downloadedFiles = mockDownloadedFiles;
 
 /**
+ * Sanitize a filename by removing path traversal sequences and special characters.
+ * This prevents path traversal attacks (CWE-22) even in test mock code.
+ * 
+ * Removes:
+ * - Path traversal sequences (.., /.., \..)
+ * - Special characters that could cause issues (<>:"|?*)
+ * 
+ * @param filename - The filename to sanitize (may come from URLs or user input)
+ * @returns A safe filename suitable for use in file system paths
+ * 
+ * @example
+ * sanitizeFilename("../../../etc/passwd") => "etcpasswd"
+ * sanitizeFilename("file<name>.txt") => "file_name_.txt"
+ * sanitizeFilename("normal-file.zip") => "normal-file.zip"
+ */
+function sanitizeFilename(filename: string): string {
+  // Remove path traversal attempts and special characters
+  return path.basename(filename.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
+}
+
+/**
  * Mock implementation of extractZip
  * Simulates extracting a ZIP archive to a destination directory
  * Creates actual directory structure
@@ -23,7 +51,9 @@ export const extractZip = jest.fn(async (file: string, dest?: string): Promise<s
   const os = require('os');
   const path = require('path');
   
-  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${path.basename(file, '.zip')}`);
+  // Sanitize the file basename to prevent path traversal
+  const safeBasename = sanitizeFilename(path.basename(file, '.zip'));
+  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
   await fs.mkdir(extractPath, { recursive: true });
   
   mockExtractedPaths.set(file, extractPath);
@@ -40,7 +70,9 @@ export const extractTar = jest.fn(async (file: string, dest?: string, flags?: st
   const os = require('os');
   const path = require('path');
   
-  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${path.basename(file, '.tar.gz')}`);
+  // Sanitize the file basename to prevent path traversal
+  const safeBasename = sanitizeFilename(path.basename(file, '.tar.gz'));
+  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
   await fs.mkdir(extractPath, { recursive: true });
   
   mockExtractedPaths.set(file, extractPath);
@@ -57,7 +89,9 @@ export const extract7z = jest.fn(async (file: string, dest?: string): Promise<st
   const os = require('os');
   const path = require('path');
   
-  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${path.basename(file, '.7z')}`);
+  // Sanitize the file basename to prevent path traversal
+  const safeBasename = sanitizeFilename(path.basename(file, '.7z'));
+  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
   await fs.mkdir(extractPath, { recursive: true });
   
   mockExtractedPaths.set(file, extractPath);
@@ -76,15 +110,19 @@ export const downloadTool = jest.fn(async (url: string, dest?: string): Promise<
   
   // Create actual temp file
   const tmpDir = os.tmpdir();
-  const fileName = url.split('/').pop() || 'download';
-  const downloadPath = dest || path.join(tmpDir, `mock-download-${Date.now()}-${fileName}`);
+  // SECURITY FIX: Sanitize URL-derived filename to prevent path traversal attacks
+  // Extract filename from URL and sanitize it
+  const urlParts = url.split('/');
+  const rawFileName = urlParts[urlParts.length - 1] || 'download';
+  const safeFileName = sanitizeFilename(rawFileName);
+  const downloadPath = dest || path.join(tmpDir, `mock-download-${Date.now()}-${safeFileName}`);
   
   // Create parent directory if needed
   const parentDir = path.dirname(downloadPath);
   await fs.mkdir(parentDir, { recursive: true }).catch(() => {});
   
-  // Create empty file (or small mock content)
-  await fs.writeFile(downloadPath, `Mock content for ${url}`, 'utf-8');
+  // Create empty file (or small mock content) - sanitize URL content too
+  await fs.writeFile(downloadPath, 'Mock download content', 'utf-8');
   
   mockDownloadedFiles.set(url, downloadPath);
   return downloadPath;
@@ -100,7 +138,10 @@ export const cacheDir = jest.fn(async (sourceDir: string, tool: string, version:
   const os = require('os');
   const path = require('path');
   
-  const cachePath = path.join(os.tmpdir(), `mock-cache-${tool}-${version}-${Date.now()}`);
+  // Sanitize tool and version to prevent path traversal
+  const safeTool = sanitizeFilename(tool);
+  const safeVersion = sanitizeFilename(version);
+  const cachePath = path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-${Date.now()}`);
   await fs.mkdir(cachePath, { recursive: true });
   
   if (!mockCachedTools.has(tool)) {
@@ -120,7 +161,10 @@ export const cacheFile = jest.fn(async (sourceFile: string, targetFile: string, 
   const os = require('os');
   const path = require('path');
   
-  const cachePath = path.join(os.tmpdir(), `mock-cache-${tool}-${version}-${Date.now()}`);
+  // Sanitize tool and version to prevent path traversal
+  const safeTool = sanitizeFilename(tool);
+  const safeVersion = sanitizeFilename(version);
+  const cachePath = path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-${Date.now()}`);
   await fs.mkdir(cachePath, { recursive: true });
   
   if (!mockCachedTools.has(tool)) {
