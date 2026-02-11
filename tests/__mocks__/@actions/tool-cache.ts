@@ -49,7 +49,9 @@ export const extractZip = jest.fn(async (file: string, dest?: string): Promise<s
   
   // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
   const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.zip');
-  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
+  // SECURITY: Sanitize dest parameter to prevent path traversal through test data
+  const safeDest = dest ? path.join(os.tmpdir(), path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
+  const extractPath = safeDest;
   await fs.mkdir(extractPath, { recursive: true });
   
   mockExtractedPaths.set(file, extractPath);
@@ -68,7 +70,9 @@ export const extractTar = jest.fn(async (file: string, dest?: string, flags?: st
   
   // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
   const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.tar.gz');
-  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
+  // SECURITY: Sanitize dest parameter to prevent path traversal through test data
+  const safeDest = dest ? path.join(os.tmpdir(), path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
+  const extractPath = safeDest;
   await fs.mkdir(extractPath, { recursive: true });
   
   mockExtractedPaths.set(file, extractPath);
@@ -87,7 +91,9 @@ export const extract7z = jest.fn(async (file: string, dest?: string): Promise<st
   
   // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
   const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.7z');
-  const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
+  // SECURITY: Sanitize dest parameter to prevent path traversal through test data
+  const safeDest = dest ? path.join(os.tmpdir(), path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
+  const extractPath = safeDest;
   await fs.mkdir(extractPath, { recursive: true });
   
   mockExtractedPaths.set(file, extractPath);
@@ -110,7 +116,9 @@ export const downloadTool = jest.fn(async (url: string, dest?: string): Promise<
   // CodeQL recognizes path.basename() as a sanitization barrier
   // Safe: path.basename('../../etc/passwd') => 'passwd' (no directory traversal)
   const safeFileName = path.basename(url.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
-  const downloadPath = dest || path.join(tmpDir, `mock-download-${Date.now()}-${safeFileName}`);
+  // SECURITY: Sanitize dest parameter as well to prevent path traversal through test data
+  const safeDest = dest ? path.join(tmpDir, path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(tmpDir, `mock-download-${Date.now()}-${safeFileName}`);
+  const downloadPath = safeDest;
   
   // Create parent directory if needed
   const parentDir = path.dirname(downloadPath);
