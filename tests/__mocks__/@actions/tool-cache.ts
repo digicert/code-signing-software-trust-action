@@ -21,25 +21,21 @@ export const cachedTools = mockCachedTools;
 export const downloadedFiles = mockDownloadedFiles;
 
 /**
- * Sanitize a filename by removing path traversal sequences and special characters.
- * This prevents path traversal attacks (CWE-22) even in test mock code.
+ * SECURITY NOTE: All path-related inputs (URLs, file names, tool names, versions) 
+ * are sanitized using path.basename() to prevent path traversal vulnerabilities (CWE-22).
  * 
- * Removes:
- * - Path traversal sequences (.., /.., \..)
- * - Special characters that could cause issues (<>:"|?*)
+ * CodeQL recognizes path.basename() as a proper sanitization barrier. We apply it
+ * directly at the point of use rather than in a separate function to ensure CodeQL's
+ * dataflow analysis properly recognizes the sanitization.
  * 
- * @param filename - The filename to sanitize (may come from URLs or user input)
- * @returns A safe filename suitable for use in file system paths
+ * Pattern used throughout:
+ *   path.basename(untrustedInput.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))
  * 
- * @example
- * sanitizeFilename("../../../etc/passwd") => "etcpasswd"
- * sanitizeFilename("file<name>.txt") => "file_name_.txt"
- * sanitizeFilename("normal-file.zip") => "normal-file.zip"
+ * This removes:
+ * - Path traversal sequences (.., /.., \..) via .replace(/\.\./g, '')
+ * - Special characters (<>:"|?*) via .replace(/[<>:"|?*]/g, '_')
+ * - Any remaining directory components via path.basename()
  */
-function sanitizeFilename(filename: string): string {
-  // Remove path traversal attempts and special characters
-  return path.basename(filename.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
-}
 
 /**
  * Mock implementation of extractZip
@@ -51,8 +47,8 @@ export const extractZip = jest.fn(async (file: string, dest?: string): Promise<s
   const os = require('os');
   const path = require('path');
   
-  // Sanitize the file basename to prevent path traversal
-  const safeBasename = sanitizeFilename(path.basename(file, '.zip'));
+  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
+  const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.zip');
   const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
   await fs.mkdir(extractPath, { recursive: true });
   
@@ -70,8 +66,8 @@ export const extractTar = jest.fn(async (file: string, dest?: string, flags?: st
   const os = require('os');
   const path = require('path');
   
-  // Sanitize the file basename to prevent path traversal
-  const safeBasename = sanitizeFilename(path.basename(file, '.tar.gz'));
+  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
+  const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.tar.gz');
   const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
   await fs.mkdir(extractPath, { recursive: true });
   
@@ -89,8 +85,8 @@ export const extract7z = jest.fn(async (file: string, dest?: string): Promise<st
   const os = require('os');
   const path = require('path');
   
-  // Sanitize the file basename to prevent path traversal
-  const safeBasename = sanitizeFilename(path.basename(file, '.7z'));
+  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
+  const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.7z');
   const extractPath = dest || path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
   await fs.mkdir(extractPath, { recursive: true });
   
@@ -110,18 +106,17 @@ export const downloadTool = jest.fn(async (url: string, dest?: string): Promise<
   
   // Create actual temp file
   const tmpDir = os.tmpdir();
-  // SECURITY FIX: Sanitize URL-derived filename to prevent path traversal attacks
-  // Extract filename from URL and sanitize it
-  const urlParts = url.split('/');
-  const rawFileName = urlParts[urlParts.length - 1] || 'download';
-  const safeFileName = sanitizeFilename(rawFileName);
+  // SECURITY FIX: Use path.basename() directly to prevent path traversal (CWE-22)
+  // CodeQL recognizes path.basename() as a sanitization barrier
+  // Safe: path.basename('../../etc/passwd') => 'passwd' (no directory traversal)
+  const safeFileName = path.basename(url.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
   const downloadPath = dest || path.join(tmpDir, `mock-download-${Date.now()}-${safeFileName}`);
   
   // Create parent directory if needed
   const parentDir = path.dirname(downloadPath);
   await fs.mkdir(parentDir, { recursive: true }).catch(() => {});
   
-  // Create empty file (or small mock content) - sanitize URL content too
+  // Create empty file (or small mock content)
   await fs.writeFile(downloadPath, 'Mock download content', 'utf-8');
   
   mockDownloadedFiles.set(url, downloadPath);
@@ -138,9 +133,9 @@ export const cacheDir = jest.fn(async (sourceDir: string, tool: string, version:
   const os = require('os');
   const path = require('path');
   
-  // Sanitize tool and version to prevent path traversal
-  const safeTool = sanitizeFilename(tool);
-  const safeVersion = sanitizeFilename(version);
+  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
+  const safeTool = path.basename(tool.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
+  const safeVersion = path.basename(version.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
   const cachePath = path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-${Date.now()}`);
   await fs.mkdir(cachePath, { recursive: true });
   
@@ -161,9 +156,9 @@ export const cacheFile = jest.fn(async (sourceFile: string, targetFile: string, 
   const os = require('os');
   const path = require('path');
   
-  // Sanitize tool and version to prevent path traversal
-  const safeTool = sanitizeFilename(tool);
-  const safeVersion = sanitizeFilename(version);
+  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
+  const safeTool = path.basename(tool.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
+  const safeVersion = path.basename(version.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
   const cachePath = path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-${Date.now()}`);
   await fs.mkdir(cachePath, { recursive: true });
   
