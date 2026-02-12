@@ -6,6 +6,7 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as path from 'path';
 import * as tc from '@actions/tool-cache';
+import { cleanupMockTempDirs } from '../__mocks__/@actions/tool-cache';
 import * as cache from '@actions/cache';
 import { setupTool, SMCTL, SMTOOLS, SMPKCS11, SMCTK } from '../../src/tool_setup';
 import { 
@@ -40,7 +41,10 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
         mockInputs.set('simple-signing-mode', 'false');
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        // Clean up mock temp directories
+        await cleanupMockTempDirs();
+        
         // Only restore spy implementations, don't reset module mocks
         jest.restoreAllMocks();
         resetCoreMocks();
@@ -101,73 +105,93 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
     describe('cachedSetup - Cache Directory Failures', () => {
         
         test('should handle cacheDir failure when disk is full', async () => {
-            // Create actual temp file
+            // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
-            await fs.writeFile(tmpFile, 'test content');
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             
-            // Mock successful download, then cache failure
-            jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
-            const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
-                return Promise.reject(new Error('ENOSPC: no space left on device'));
-            });
+            try {
+                await fs.writeFile(tmpFile, 'test content');
+                
+                // Mock successful download, then cache failure
+                jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
+                const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
+                    return Promise.reject(new Error('ENOSPC: no space left on device'));
+                });
 
-            await expect(setupTool(SMCTL)).rejects.toThrow('ENOSPC');
-            
-            spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+                await expect(setupTool(SMCTL)).rejects.toThrow('ENOSPC');
+                
+                spy.mockRestore();
+            } finally {
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            }
         });
 
         test('should handle cacheDir failure with permission denied', async () => {
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
-            await fs.writeFile(tmpFile, 'test content');
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             
-            jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
-            const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
-                return Promise.reject(new Error('EACCES: permission denied'));
-            });
+            try {
+                await fs.writeFile(tmpFile, 'test content');
+                
+                jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
+                const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
+                    return Promise.reject(new Error('EACCES: permission denied'));
+                });
 
-            await expect(setupTool(SMCTL)).rejects.toThrow('EACCES');
-            
-            spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+                await expect(setupTool(SMCTL)).rejects.toThrow('EACCES');
+                
+                spy.mockRestore();
+            } finally {
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            }
         });
 
         test('should handle cacheDir failure with read-only filesystem', async () => {
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
-            await fs.writeFile(tmpFile, 'test content');
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             
-            jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
-            const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
-                return Promise.reject(new Error('EROFS: read-only file system'));
-            });
+            try {
+                await fs.writeFile(tmpFile, 'test content');
+                
+                jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
+                const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
+                    return Promise.reject(new Error('EROFS: read-only file system'));
+                });
 
-            await expect(setupTool(SMCTL)).rejects.toThrow('EROFS');
-            
-            spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+                await expect(setupTool(SMCTL)).rejects.toThrow('EROFS');
+                
+                spy.mockRestore();
+            } finally {
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            }
         });
 
         test('should handle invalid cache directory path', async () => {
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
-            await fs.writeFile(tmpFile, 'test content');
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             
-            jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
-            const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
-                return Promise.reject(new Error('ENOTDIR: not a directory'));
-            });
+            try {
+                await fs.writeFile(tmpFile, 'test content');
+                
+                jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
+                const spy = jest.spyOn(tc, 'cacheDir').mockImplementation(() => {
+                    return Promise.reject(new Error('ENOTDIR: not a directory'));
+                });
 
-            await expect(setupTool(SMCTL)).rejects.toThrow('ENOTDIR');
-            
-            spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+                await expect(setupTool(SMCTL)).rejects.toThrow('ENOTDIR');
+                
+                spy.mockRestore();
+            } finally {
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            }
         });
     });
 
@@ -176,35 +200,39 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
         test('should fallback to cache-version when sha256 download fails', async () => {
             mockInputs.set('use-binary-sha256-checksum', 'true');
             
-            // Create a temporary file
+            // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-smctl-${Date.now()}.exe`);
-            await fs.writeFile(tmpFile, 'mock content');
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-smctl-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             
-            // Mock: SHA256 download fails all 3 retry attempts, then binary download succeeds
-            const downloadSpy = jest.spyOn(tc, 'downloadTool');
-            let callCount = 0;
-            downloadSpy.mockImplementation((url: string) => {
-                callCount++;
-                // First 3 calls are SHA256 download retries - all fail
-                if (callCount <= 3) {
-                    return Promise.reject(new Error('SHA256 file not found'));
-                }
-                // Subsequent calls are binary download - succeed
-                return Promise.resolve(tmpFile);
-            });
-            
-            // Ensure cacheDir works
-            jest.spyOn(tc, 'cacheDir').mockResolvedValueOnce('/mock/cache/smctl/1.0.0');
+            try {
+                await fs.writeFile(tmpFile, 'mock content');
+                
+                // Mock: SHA256 download fails all 3 retry attempts, then binary download succeeds
+                const downloadSpy = jest.spyOn(tc, 'downloadTool');
+                let callCount = 0;
+                downloadSpy.mockImplementation((url: string) => {
+                    callCount++;
+                    // First 3 calls are SHA256 download retries - all fail
+                    if (callCount <= 3) {
+                        return Promise.reject(new Error('SHA256 file not found'));
+                    }
+                    // Subsequent calls are binary download - succeed
+                    return Promise.resolve(tmpFile);
+                });
+                
+                // Ensure cacheDir works
+                jest.spyOn(tc, 'cacheDir').mockResolvedValueOnce('/mock/cache/smctl/1.0.0');
 
-            const result = await setupTool(SMCTL);
-            
-            // Should complete successfully using fallback version
-            expect(result).toBeDefined();
-            
-            // Cleanup
-            await fs.unlink(tmpFile).catch(() => {});
+                const result = await setupTool(SMCTL);
+                
+                // Should complete successfully using fallback version
+                expect(result).toBeDefined();
+            } finally {
+                // Cleanup
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            }
         });
 
         test('should handle corrupted sha256 file content', async () => {
@@ -212,29 +240,33 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-smctl-${Date.now()}.exe`);
-            await fs.writeFile(tmpFile, 'mock content');
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-smctl-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             
-            // Mock sha256 file with invalid content - fail all retry attempts
-            const downloadSpy = jest.spyOn(tc, 'downloadTool');
-            let callCount = 0;
-            downloadSpy.mockImplementation(() => {
-                callCount++;
-                if (callCount <= 3) {
-                    return Promise.reject(new Error('Invalid SHA256 format'));
-                }
-                return Promise.resolve(tmpFile);
-            });
-            
-            // Ensure cacheDir works
-            jest.spyOn(tc, 'cacheDir').mockResolvedValueOnce('/mock/cache/smctl/1.0.0');
+            try {
+                await fs.writeFile(tmpFile, 'mock content');
+                
+                // Mock sha256 file with invalid content - fail all retry attempts
+                const downloadSpy = jest.spyOn(tc, 'downloadTool');
+                let callCount = 0;
+                downloadSpy.mockImplementation(() => {
+                    callCount++;
+                    if (callCount <= 3) {
+                        return Promise.reject(new Error('Invalid SHA256 format'));
+                    }
+                    return Promise.resolve(tmpFile);
+                });
+                
+                // Ensure cacheDir works
+                jest.spyOn(tc, 'cacheDir').mockResolvedValueOnce('/mock/cache/smctl/1.0.0');
 
-            const result = await setupTool(SMCTL);
-            
-            // Should fallback and complete
-            expect(result).toBeDefined();
-            
-            await fs.unlink(tmpFile).catch(() => {});
+                const result = await setupTool(SMCTL);
+                
+                // Should fallback and complete
+                expect(result).toBeDefined();
+            } finally {
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            }
         });
 
         test('should handle empty sha256 file', async () => {
@@ -242,27 +274,31 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-smctl-${Date.now()}.exe`);
-            await fs.writeFile(tmpFile, 'mock content');
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-smctl-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             
-            // Fail all SHA256 retry attempts, then succeed with binary download
-            const downloadSpy = jest.spyOn(tc, 'downloadTool');
-            let callCount = 0;
-            downloadSpy.mockImplementation(() => {
-                callCount++;
-                if (callCount <= 3) {
-                    return Promise.reject(new Error('Empty file'));
-                }
-                return Promise.resolve(tmpFile);
-            });
-            
-            // Ensure cacheDir works
-            jest.spyOn(tc, 'cacheDir').mockResolvedValueOnce('/mock/cache/smctl/1.0.0');
+            try {
+                await fs.writeFile(tmpFile, 'mock content');
+                
+                // Fail all SHA256 retry attempts, then succeed with binary download
+                const downloadSpy = jest.spyOn(tc, 'downloadTool');
+                let callCount = 0;
+                downloadSpy.mockImplementation(() => {
+                    callCount++;
+                    if (callCount <= 3) {
+                        return Promise.reject(new Error('Empty file'));
+                    }
+                    return Promise.resolve(tmpFile);
+                });
+                
+                // Ensure cacheDir works
+                jest.spyOn(tc, 'cacheDir').mockResolvedValueOnce('/mock/cache/smctl/1.0.0');
 
-            const result = await setupTool(SMCTL);
-            expect(result).toBeDefined();
-            
-            await fs.unlink(tmpFile).catch(() => {});
+                const result = await setupTool(SMCTL);
+                expect(result).toBeDefined();
+            } finally {
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            }
         });
     });
 
@@ -677,10 +713,11 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
         // The test logic is correct but there's mock state leaking from previous tests
         // TODO: Investigate test isolation issue - likely related to cacheDir mock from previous tests
         test.skip('should handle successful download but cache failure', async () => {
-            // Create actual temp file
+            // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'test content');
             
             try {
@@ -699,7 +736,7 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
                 await expect(setupTool(SMCTL)).rejects.toThrow('Cache write failed');
             } finally {
                 // Cleanup
-                await fs.unlink(tmpFile).catch(() => {});
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
             }
         });
 

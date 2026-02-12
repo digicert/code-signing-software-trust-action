@@ -6,8 +6,8 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import { chmod } from '../../src/add_execute_permission';
-import { createSecureTempDir, rmDir } from '../../src/utils';
 import { resetMocks as resetCoreMocks } from '../__mocks__/@actions/core';
 
 // Mock @actions/core
@@ -18,15 +18,15 @@ describe('add_execute_permission', () => {
     let testDir: string;
 
     beforeEach(async () => {
-      // Create a temporary test directory
-      testDir = await createSecureTempDir('chmod-test-');
+      // Create a temporary test directory with secure permissions
+      testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'chmod-test-'));
       resetCoreMocks();
     });
 
     afterEach(async () => {
       // Clean up test directory
       if (testDir) {
-        await rmDir(testDir);
+        await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
       }
     });
 

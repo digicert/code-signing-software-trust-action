@@ -15,10 +15,25 @@ const mockExtractedPaths = new Map<string, string>();
 const mockCachedTools = new Map<string, Map<string, string>>(); // toolName -> version -> path
 const mockDownloadedFiles = new Map<string, string>();
 
+// Track temp directories created by mocks for cleanup
+const mockCreatedTempDirs = new Set<string>();
+
 // Export state for test assertions
 export const extractedPaths = mockExtractedPaths;
 export const cachedTools = mockCachedTools;
 export const downloadedFiles = mockDownloadedFiles;
+
+/**
+ * Cleanup function to remove all temp directories created by mocks
+ * Should be called in test cleanup/teardown (e.g., afterEach or afterAll)
+ */
+export const cleanupMockTempDirs = async (): Promise<void> => {
+  const fs = require('fs/promises');
+  for (const tempDir of mockCreatedTempDirs) {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
+  mockCreatedTempDirs.clear();
+};
 
 /**
  * SECURITY NOTE: All path-related inputs (URLs, file names, tool names, versions) 
@@ -47,12 +62,16 @@ export const extractZip = jest.fn(async (file: string, dest?: string): Promise<s
   const os = require('os');
   const path = require('path');
   
-  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
-  const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.zip');
-  // SECURITY: Sanitize dest parameter to prevent path traversal through test data
-  const safeDest = dest ? path.join(os.tmpdir(), path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
-  const extractPath = safeDest;
+  // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
+  // If dest is provided, use it (for compatibility with existing code)
+  // Otherwise create a secure temp directory with fs.mkdtemp()
+  const extractPath = dest || await fs.mkdtemp(path.join(os.tmpdir(), 'mock-extract-zip-'));
   await fs.mkdir(extractPath, { recursive: true });
+  
+  // Track temp directory for cleanup
+  if (!dest) {
+    mockCreatedTempDirs.add(extractPath);
+  }
   
   mockExtractedPaths.set(file, extractPath);
   return extractPath;
@@ -68,12 +87,16 @@ export const extractTar = jest.fn(async (file: string, dest?: string, flags?: st
   const os = require('os');
   const path = require('path');
   
-  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
-  const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.tar.gz');
-  // SECURITY: Sanitize dest parameter to prevent path traversal through test data
-  const safeDest = dest ? path.join(os.tmpdir(), path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
-  const extractPath = safeDest;
+  // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
+  // If dest is provided, use it (for compatibility with existing code)
+  // Otherwise create a secure temp directory with fs.mkdtemp()
+  const extractPath = dest || await fs.mkdtemp(path.join(os.tmpdir(), 'mock-extract-tar-'));
   await fs.mkdir(extractPath, { recursive: true });
+  
+  // Track temp directory for cleanup
+  if (!dest) {
+    mockCreatedTempDirs.add(extractPath);
+  }
   
   mockExtractedPaths.set(file, extractPath);
   return extractPath;
@@ -89,12 +112,13 @@ export const extract7z = jest.fn(async (file: string, dest?: string): Promise<st
   const os = require('os');
   const path = require('path');
   
-  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
-  const safeBasename = path.basename(file.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'), '.7z');
-  // SECURITY: Sanitize dest parameter to prevent path traversal through test data
-  const safeDest = dest ? path.join(os.tmpdir(), path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(os.tmpdir(), `mock-extract-${Date.now()}-${safeBasename}`);
-  const extractPath = safeDest;
-  await fs.mkdir(extractPath, { recursive: true });
+  // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
+  // Creates directory with restrictive permissions and guaranteed unique name
+  const safeBasename = path.basename(file, '.7z').replace(/[^a-zA-Z0-9-_]/g, '_');
+  const extractPath = await fs.mkdtemp(path.join(os.tmpdir(), `mock-extract-7z-${safeBasename}-`));
+  
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(extractPath);
   
   mockExtractedPaths.set(file, extractPath);
   return extractPath;
@@ -110,19 +134,14 @@ export const downloadTool = jest.fn(async (url: string, dest?: string): Promise<
   const os = require('os');
   const path = require('path');
   
-  // Create actual temp file
-  const tmpDir = os.tmpdir();
-  // SECURITY FIX: Use path.basename() directly to prevent path traversal (CWE-22)
-  // CodeQL recognizes path.basename() as a sanitization barrier
-  // Safe: path.basename('../../etc/passwd') => 'passwd' (no directory traversal)
-  const safeFileName = path.basename(url.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
-  // SECURITY: Sanitize dest parameter as well to prevent path traversal through test data
-  const safeDest = dest ? path.join(tmpDir, path.basename(dest.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'))) : path.join(tmpDir, `mock-download-${Date.now()}-${safeFileName}`);
-  const downloadPath = safeDest;
+  // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
+  // Creates directory with restrictive permissions and guaranteed unique name
+  const safeFileName = path.basename(url).replace(/[^a-zA-Z0-9-_.]/g, '_');
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `mock-download-${safeFileName}-`));
+  const downloadPath = path.join(tempDir, safeFileName || 'download');
   
-  // Create parent directory if needed
-  const parentDir = path.dirname(downloadPath);
-  await fs.mkdir(parentDir, { recursive: true }).catch(() => {});
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(tempDir);
   
   // Create empty file (or small mock content)
   await fs.writeFile(downloadPath, 'Mock download content', 'utf-8');
@@ -141,11 +160,14 @@ export const cacheDir = jest.fn(async (sourceDir: string, tool: string, version:
   const os = require('os');
   const path = require('path');
   
-  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
-  const safeTool = path.basename(tool.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
-  const safeVersion = path.basename(version.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
-  const cachePath = path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-${Date.now()}`);
-  await fs.mkdir(cachePath, { recursive: true });
+  // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
+  // Creates directory with restrictive permissions and guaranteed unique name
+  const safeTool = tool.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const safeVersion = version.replace(/[^a-zA-Z0-9-_.]/g, '_');
+  const cachePath = await fs.mkdtemp(path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-`));
+  
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(cachePath);
   
   if (!mockCachedTools.has(tool)) {
     mockCachedTools.set(tool, new Map());
@@ -164,11 +186,14 @@ export const cacheFile = jest.fn(async (sourceFile: string, targetFile: string, 
   const os = require('os');
   const path = require('path');
   
-  // SECURITY: Use path.basename() directly to prevent path traversal (CWE-22)
-  const safeTool = path.basename(tool.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
-  const safeVersion = path.basename(version.replace(/\.\./g, '').replace(/[<>:"|?*]/g, '_'));
-  const cachePath = path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-${Date.now()}`);
-  await fs.mkdir(cachePath, { recursive: true });
+  // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
+  // Creates directory with restrictive permissions and guaranteed unique name
+  const safeTool = tool.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const safeVersion = version.replace(/[^a-zA-Z0-9-_.]/g, '_');
+  const cachePath = await fs.mkdtemp(path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-`));
+  
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(cachePath);
   
   if (!mockCachedTools.has(tool)) {
     mockCachedTools.set(tool, new Map());
