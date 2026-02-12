@@ -21,9 +21,12 @@ inputs:
   input:
     description: 'File or Directory(files) to sign'
     required: false
-  diegest-alg:
+  digest-alg:
     description: 'Digest(Hash) algorithm'
-    default: 'SHA-256'
+    default: ''
+    required: false
+  diegest-alg:
+    description: '[DEPRECATED] Use digest-alg instead. This parameter has a typo and will be removed in a future version.'
     required: false
   fail-fast:
     description: | 
@@ -78,6 +81,9 @@ inputs:
       Sign multiple files in a single operation. This action only works when you are simple signing.
     required: false
     default: 'false'
+outputs:
+  PKCS11_CONFIG:
+    description: 'Absolute path to the generated pkcs11Properties.cfg file used for PKCS#11 configuration'
 runs:
   using: node20
   main: 'dist/index.js'

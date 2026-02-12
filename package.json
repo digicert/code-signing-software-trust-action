@@ -6,7 +6,12 @@
         "build": "tsc && ncc build lib/index.js",
         "clean": "rimraf lib build dist",
         "cb": "npm run clean && npm run build",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "test:ci": "jest --ci --coverage --maxWorkers=2",
+        "test:unit": "jest tests/unit",
+        "test:integration": "jest tests/integration"
     },
     "repository": {
         "type": "git",
@@ -29,15 +34,24 @@
     "homepage": "https://github.com/digicert/code-signing-software-trust-action#readme",
     "description": "Code signing with DigiCert® Software Trust Manager",
     "devDependencies": {
+        "@jest/globals": "^30.2.0",
+        "@types/adm-zip": "^0.5.7",
+        "@types/jest": "^30.0.0",
+        "@types/nock": "^10.0.3",
         "@types/node": "^24.0.13",
+        "@vercel/ncc": "^0.38.3",
+        "adm-zip": "^0.5.16",
+        "jest": "^30.2.0",
+        "nock": "^14.0.10",
         "rimraf": "^6.0.1",
-        "typescript": "^5.8.3",
-        "@vercel/ncc": "^0.38.3"
+        "tar": "^7.5.7",
+        "ts-jest": "^29.4.6",
+        "typescript": "^5.8.3"
     },
     "dependencies": {
-        "@actions/cache": "^4.0.3",
-        "@actions/core": "^1.11.1",
+        "@actions/cache": "^5.0.5",
+        "@actions/core": "^2.0.3",
         "@actions/exec": "^1.1.1",
-        "@actions/tool-cache": "^2.0.2"
+        "@actions/tool-cache": "^3.0.1"
     }
 }

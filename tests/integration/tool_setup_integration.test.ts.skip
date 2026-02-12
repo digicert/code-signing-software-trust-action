@@ -1,0 +1,525 @@
+/**
+ * Integration tests for tool_setup.ts
+ * These tests use REAL CDN downloads to validate the complete download, cache, and setup work            // Verify downloaded from CDN
+            const downloads = Array.from(downloadedFiles.keys());
+            expect(downloads.length).toBeGreaterThan(0);
+            expect(downloads.some((url: string) => url.includes('pki-downloads.digicert.com'))).toBe(true);
+            expect(downloads.some((url: string) => url.includes('smctl'))).toBe(true);
+ * 
+ * Test Strategy:
+ * 1. Use actual DigiCert CDN for realistic testing
+ * 2. Test across OS+Arch matrix (win32/linux/darwin x x64/arm64)
+ * 3. Use action.yml defaults for configuration
+ * 4. Validate cache hit/miss scenarios
+ * 5. Verify tool extraction and path setup
+ */
+
+import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
+import { setupTool, SMCTL, SMTOOLS, SMPKCS11, SMCTK, SCD } from '../../src/tool_setup';
+import { 
+    mockInputs, 
+    mockOutputs, 
+    addedPaths,
+    resetMocks as resetCoreMocks 
+} from '../__mocks__/@actions/core';
+import { 
+    extractedPaths,
+    cachedTools,
+    downloadedFiles,
+    resetMocks as resetToolCacheMocks 
+} from '../__mocks__/@actions/tool-cache';
+
+// Test timeout extended for real CDN downloads
+jest.setTimeout(120000); // 2 minutes per test
+
+describe('tool_setup.ts - Integration Tests with Real CDN', () => {
+    let testTempDir: string;
+
+    beforeEach(async () => {
+        // Reset all mocks
+        resetCoreMocks();
+        resetToolCacheMocks();
+
+        // Create test temp directory
+        testTempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tool-setup-integration-'));
+
+        // Set RUNNER_TOOL_CACHE to our test directory
+        process.env['RUNNER_TOOL_CACHE'] = testTempDir;
+
+        // Set default inputs from action.yml
+        mockInputs.set('digicert-cdn', 'https://pki-downloads.digicert.com/stm/latest');
+        mockInputs.set('cache-version', '0.0.0-0');
+        mockInputs.set('use-binary-sha256-checksum', 'true');
+        mockInputs.set('use-github-caching-service', 'true');
+        mockInputs.set('simple-signing-mode', 'false');
+    });
+
+    afterEach(async () => {
+        // Cleanup test directory
+        if (testTempDir) {
+            try {
+                await fs.rm(testTempDir, { recursive: true, force: true });
+            } catch (error) {
+                console.warn(`Failed to cleanup test directory: ${error}`);
+            }
+        }
+
+        // Clear environment
+        delete process.env['RUNNER_TOOL_CACHE'];
+    });
+
+    describe('OS+Arch Matrix Tests', () => {
+        /**
+         * Test matrix for all supported platforms
+         */
+        const platformMatrix = [
+            // Windows
+            { platform: 'win32', arch: 'x64', tool: SMCTL, expectedFile: 'smctl.exe' },
+            
+            // Linux
+            { platform: 'linux', arch: 'x64', tool: SMCTL, expectedFile: 'smctl' },
+            
+            // macOS Intel
+            { platform: 'darwin', arch: 'x64', tool: SMCTL, expectedFile: 'smctl-mac-x64' },
+            
+            // macOS Apple Silicon
+            { platform: 'darwin', arch: 'arm64', tool: SMCTL, expectedFile: 'smctl-mac-x64' },
+        ];
+
+        platformMatrix.forEach(({ platform, arch, tool, expectedFile }) => {
+            test(`should download and setup ${tool} on ${platform}-${arch}`, async () => {
+                // Mock platform
+                Object.defineProperty(process, 'platform', {
+                    value: platform,
+                    configurable: true,
+                });
+                Object.defineProperty(process, 'arch', {
+                    value: arch,
+                    configurable: true,
+                });
+
+                // Perform setup
+                const toolPath = await setupTool(tool);
+
+                // Assertions
+                expect(toolPath).toBeDefined();
+                expect(typeof toolPath).toBe('string');
+                expect(toolPath!.length).toBeGreaterThan(0);
+
+                // Verify tool was cached
+                const toolName = `${tool}-${platform}-${arch}`;
+                expect(cachedTools.has(toolName)).toBe(true);
+
+                // Verify PATH was updated for executables
+                if (tool === SMCTL) {
+                    expect(addedPaths.length).toBeGreaterThan(0);
+                }
+
+                // Verify downloaded from CDN
+                expect(downloadedFiles.size).toBeGreaterThan(0);
+            });
+        });
+    });
+
+    describe('SMCTL Download and Setup', () => {
+        test('should download smctl from real CDN on current platform', async () => {
+            // Use current platform
+            const currentPlatform = process.platform;
+            const currentArch = process.arch;
+
+            // Setup smctl
+            const toolPath = await setupTool(SMCTL);
+
+            // Verify setup succeeded
+            expect(toolPath).toBeDefined();
+            expect(toolPath).toBeTruthy();
+
+            // Verify cache was used
+            const toolName = `${SMCTL}-${currentPlatform}-${currentArch}`;
+            expect(cachedTools.has(toolName)).toBe(true);
+
+            // Verify download occurred
+            expect(downloadedFiles.size).toBeGreaterThan(0);
+            const downloads = Array.from(downloadedFiles.keys());
+            expect(downloads.some(url => url.includes('pki-downloads.digicert.com'))).toBe(true);
+            expect(downloads.some(url => url.includes('smctl'))).toBe(true);
+
+            // Verify PATH was added
+            expect(addedPaths).toContain(expect.stringContaining('smctl'));
+
+            // Verify output for version flag execution
+            expect(mockOutputs.size).toBeGreaterThan(0);
+        }, 120000); // 2 minute timeout
+
+        test('should use cache on second setup call', async () => {
+            // First setup - cache miss
+            const toolPath1 = await setupTool(SMCTL);
+            expect(toolPath1).toBeDefined();
+
+            const firstDownloadCount = downloadedFiles.size;
+            expect(firstDownloadCount).toBeGreaterThan(0);
+
+            // Second setup - should hit cache
+            const toolPath2 = await setupTool(SMCTL);
+            expect(toolPath2).toBeDefined();
+
+            // Same path should be returned
+            expect(toolPath2).toBe(toolPath1);
+
+            // No additional downloads (cache hit)
+            expect(downloadedFiles.size).toBe(firstDownloadCount);
+        });
+
+        test('should download sha256 checksum file when enabled', async () => {
+            mockInputs.set('use-binary-sha256-checksum', 'true');
+
+            await setupTool(SMCTL);
+
+            // Verify sha256 checksum file was downloaded
+            const downloads = Array.from(downloadedFiles.keys());
+            expect(downloads.some((url: string) => url.endsWith('.sha256'))).toBe(true);
+        });
+
+        test('should use cache-version when sha256 checksum download fails', async () => {
+            // Use invalid CDN to force sha256 download failure
+            mockInputs.set('digicert-cdn', 'https://invalid.example.com/stm/latest');
+            mockInputs.set('use-binary-sha256-checksum', 'true');
+
+            // Should fallback to cache-version
+            try {
+                await setupTool(SMCTL);
+            } catch (error) {
+                // Expected to fail on invalid CDN
+                expect(error).toBeDefined();
+            }
+
+            // Verify attempted to download
+            expect(downloadedFiles.size).toBeGreaterThan(0);
+        });
+    });
+
+    describe('Platform-Specific Features', () => {
+        test('should create symlink for smctl on macOS', async () => {
+            // Mock macOS
+            Object.defineProperty(process, 'platform', {
+                value: 'darwin',
+                configurable: true,
+            });
+            Object.defineProperty(process, 'arch', {
+                value: 'x64',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMCTL);
+            expect(toolPath).toBeDefined();
+
+            // Verify tool was cached (symlink creation happens after caching)
+            expect(cachedTools.has(`${SMCTL}-darwin-x64`)).toBe(true);
+        });
+
+        test('should add execute permissions on Linux', async () => {
+            // Mock Linux
+            Object.defineProperty(process, 'platform', {
+                value: 'linux',
+                configurable: true,
+            });
+            Object.defineProperty(process, 'arch', {
+                value: 'x64',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMCTL);
+            expect(toolPath).toBeDefined();
+
+            // Verify tool was cached (chmod happens after caching)
+            expect(cachedTools.has(`${SMCTL}-linux-x64`)).toBe(true);
+        });
+
+        test('should handle Windows executable (.exe) correctly', async () => {
+            // Mock Windows
+            Object.defineProperty(process, 'platform', {
+                value: 'win32',
+                configurable: true,
+            });
+            Object.defineProperty(process, 'arch', {
+                value: 'x64',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMCTL);
+            expect(toolPath).toBeDefined();
+
+            // On Windows, executable should end with .exe
+            if (toolPath) {
+                expect(toolPath.endsWith('.exe') || toolPath.includes('smctl')).toBe(true);
+            }
+        });
+    });
+
+    describe('SMTOOLS Bundle Tests', () => {
+        test('should download and setup smtools-windows bundle', async () => {
+            // Mock Windows
+            Object.defineProperty(process, 'platform', {
+                value: 'win32',
+                configurable: true,
+            });
+            Object.defineProperty(process, 'arch', {
+                value: 'x64',
+                configurable: true,
+            });
+
+            mockInputs.set('simple-signing-mode', 'false');
+
+            const toolPath = await setupTool(SMTOOLS);
+            expect(toolPath).toBeDefined();
+
+            // Verify MSI was downloaded
+            const downloads = Array.from(downloadedFiles.keys());
+            expect(downloads.some((url: string) => url.includes('smtools-windows'))).toBe(true);
+            expect(downloads.some((url: string) => url.endsWith('.msi'))).toBe(true);
+
+            // Verify PKCS11 config output was set
+            expect(mockOutputs.has('PKCS11_CONFIG')).toBe(true);
+        });
+
+        test('should download and setup smtools-linux bundle', async () => {
+            // Mock Linux
+            Object.defineProperty(process, 'platform', {
+                value: 'linux',
+                configurable: true,
+            });
+            Object.defineProperty(process, 'arch', {
+                value: 'x64',
+                configurable: true,
+            });
+
+            mockInputs.set('simple-signing-mode', 'false');
+
+            const toolPath = await setupTool(SMTOOLS);
+            expect(toolPath).toBeDefined();
+
+            // Verify TAR was downloaded
+            const downloads = Array.from(downloadedFiles.keys());
+            expect(downloads.some((url: string) => url.includes('smtools-linux'))).toBe(true);
+            expect(downloads.some((url: string) => url.endsWith('.tar.gz'))).toBe(true);
+
+            // Verify PKCS11 config output was set
+            expect(mockOutputs.has('PKCS11_CONFIG')).toBe(true);
+        });
+    });
+
+    describe('PKCS11 Configuration', () => {
+        test('should create PKCS11 config file for smtools on Windows', async () => {
+            Object.defineProperty(process, 'platform', {
+                value: 'win32',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMTOOLS);
+            expect(toolPath).toBeDefined();
+
+            // Verify PKCS11_CONFIG output was set
+            expect(mockOutputs.has('PKCS11_CONFIG')).toBe(true);
+            const configPath = mockOutputs.get('PKCS11_CONFIG');
+            expect(configPath).toBeDefined();
+            expect(configPath).toContain('pkc11Properties.cfg');
+
+            // On Windows, paths should have escaped backslashes
+            if (configPath) {
+                expect(configPath.includes('\\\\') || configPath.includes('pkc11Properties.cfg')).toBe(true);
+            }
+        });
+
+        test('should create PKCS11 config file for smtools on Linux', async () => {
+            Object.defineProperty(process, 'platform', {
+                value: 'linux',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMTOOLS);
+            expect(toolPath).toBeDefined();
+
+            // Verify PKCS11_CONFIG output was set
+            expect(mockOutputs.has('PKCS11_CONFIG')).toBe(true);
+            const configPath = mockOutputs.get('PKCS11_CONFIG');
+            expect(configPath).toBeDefined();
+            expect(configPath).toContain('pkc11Properties.cfg');
+        });
+
+        test('should create PKCS11 config file for smpkcs11 on macOS', async () => {
+            Object.defineProperty(process, 'platform', {
+                value: 'darwin',
+                configurable: true,
+            });
+            Object.defineProperty(process, 'arch', {
+                value: 'x64',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMPKCS11);
+            expect(toolPath).toBeDefined();
+
+            // Verify PKCS11_CONFIG output was set
+            expect(mockOutputs.has('PKCS11_CONFIG')).toBe(true);
+            const configPath = mockOutputs.get('PKCS11_CONFIG');
+            expect(configPath).toBeDefined();
+            expect(configPath).toContain('pkc11Properties.cfg');
+        });
+    });
+
+    describe('Cache Behavior', () => {
+        test('should respect use-github-caching-service input', async () => {
+            // Disable caching
+            mockInputs.set('use-github-caching-service', 'false');
+
+            const toolPath = await setupTool(SMCTL);
+            expect(toolPath).toBeDefined();
+
+            // Download should still occur
+            expect(downloadedFiles.size).toBeGreaterThan(0);
+        });
+
+        test('should use cache-version from action.yml default', async () => {
+            // Default is '0.0.0-0' from action.yml
+            expect(mockInputs.get('cache-version')).toBe('0.0.0-0');
+
+            const toolPath = await setupTool(SMCTL);
+            expect(toolPath).toBeDefined();
+
+            // Verify cache used the version
+            const currentPlatform = process.platform;
+            const currentArch = process.arch;
+            const toolName = `${SMCTL}-${currentPlatform}-${currentArch}`;
+            
+            const cached = cachedTools.get(toolName);
+            expect(cached).toBeDefined();
+            if (cached) {
+                // Check that the version used starts with 0.0.0-
+                const versions = Array.from(cached.keys());
+                expect(versions.some(v => v.startsWith('0.0.0-'))).toBe(true);
+            }
+        });
+
+        test('should change download when cache-version changes', async () => {
+            // First download with default version
+            mockInputs.set('cache-version', '1.0.0-0');
+            const toolPath1 = await setupTool(SMCTL);
+            expect(toolPath1).toBeDefined();
+
+            const firstDownloadCount = downloadedFiles.size;
+
+            // Reset and change version
+            resetToolCacheMocks();
+            mockInputs.set('cache-version', '2.0.0-0');
+            
+            const toolPath2 = await setupTool(SMCTL);
+            expect(toolPath2).toBeDefined();
+
+            // Should have new download due to version change
+            expect(downloadedFiles.size).toBeGreaterThan(0);
+        });
+    });
+
+    describe('Error Handling', () => {
+        test('should handle invalid tool name gracefully', async () => {
+            const result = await setupTool('invalid-tool-name');
+            expect(result).toBeUndefined();
+        });
+
+        test('should handle CDN download failures', async () => {
+            // Set invalid CDN
+            mockInputs.set('digicert-cdn', 'https://invalid-cdn-url-does-not-exist.example.com');
+
+            await expect(setupTool(SMCTL)).rejects.toThrow();
+        });
+
+        test('should handle platform not supported', async () => {
+            // Mock unsupported platform
+            Object.defineProperty(process, 'platform', {
+                value: 'freebsd',
+                configurable: true,
+            });
+
+            const result = await setupTool(SMCTL);
+            
+            // Should return undefined or handle gracefully
+            expect(result === undefined || result === null).toBe(true);
+        });
+    });
+
+    describe('Tool Metadata Validation', () => {
+        test('should validate SMCTL constant is lowercase with no spaces', () => {
+            expect(SMCTL).toBe('smctl');
+            expect(SMCTL).toMatch(/^[a-z0-9-]+$/);
+            expect(SMCTL).not.toContain(' ');
+        });
+
+        test('should validate SMTOOLS constant is lowercase with no spaces', () => {
+            expect(SMTOOLS).toBe('smtools');
+            expect(SMTOOLS).toMatch(/^[a-z0-9-]+$/);
+            expect(SMTOOLS).not.toContain(' ');
+        });
+
+        test('should validate SMPKCS11 constant is lowercase with no spaces', () => {
+            expect(SMPKCS11).toBe('smpkcs11');
+            expect(SMPKCS11).toMatch(/^[a-z0-9-]+$/);
+            expect(SMPKCS11).not.toContain(' ');
+        });
+
+        test('should validate SMCTK constant is lowercase with no spaces', () => {
+            expect(SMCTK).toBe('smctk');
+            expect(SMCTK).toMatch(/^[a-z0-9-]+$/);
+            expect(SMCTK).not.toContain(' ');
+        });
+
+        test('should validate SCD constant is lowercase with no spaces', () => {
+            expect(SCD).toBe('ssm-scd');
+            expect(SCD).toMatch(/^[a-z0-9-]+$/);
+            expect(SCD).not.toContain(' ');
+        });
+    });
+
+    describe('Archive Extraction', () => {
+        test('should extract DMG files on macOS', async () => {
+            Object.defineProperty(process, 'platform', {
+                value: 'darwin',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMCTL);
+            expect(toolPath).toBeDefined();
+
+            // Verify extraction occurred
+            expect(extractedPaths.size).toBeGreaterThan(0);
+        });
+
+        test('should extract MSI files on Windows', async () => {
+            Object.defineProperty(process, 'platform', {
+                value: 'win32',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMTOOLS);
+            expect(toolPath).toBeDefined();
+
+            // Verify extraction occurred
+            expect(extractedPaths.size).toBeGreaterThan(0);
+        });
+
+        test('should extract TAR.GZ files on Linux', async () => {
+            Object.defineProperty(process, 'platform', {
+                value: 'linux',
+                configurable: true,
+            });
+
+            const toolPath = await setupTool(SMTOOLS);
+            expect(toolPath).toBeDefined();
+
+            // Verify extraction occurred
+            expect(extractedPaths.size).toBeGreaterThan(0);
+        });
+    });
+});

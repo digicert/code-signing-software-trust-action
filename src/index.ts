@@ -28,10 +28,15 @@ export async function main() {
                 await setupTool(SMTOOLS);
                 break;
             case 'darwin':
-                await setupTool(SMCTL);
-                await setupTool(SMCTK);
-                await setupTool(SMPKCS11);
-                await setupTool(SCD);
+                // Parallel tool setup for macOS - all 4 tools are independent
+                core.info('Downloading and installing 4 macOS tools in parallel...');
+                await Promise.all([
+                    setupTool(SMCTL),
+                    setupTool(SMCTK),
+                    setupTool(SMPKCS11),
+                    setupTool(SCD)
+                ]);
+                core.info('All macOS tools installed successfully');
                 break;
         };
     }
