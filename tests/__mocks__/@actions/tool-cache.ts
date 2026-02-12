@@ -1,19 +1,6 @@
 /**
  * Mock implementation of @actions/tool-cache
- * Used for testing tool downloaexport const extract7z = jest.fn(async (file: string, dest?: string): Promise<string> => {
-  const fs = require('fs/promises');
-  const os = require('os');
-  const path = require('path');
-  
-  // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
-  // If dest is provided, use it (for compatibility with existing code)
-  // Otherwise create a secure temp directory with fs.mkdtemp()
-  const extractPath = dest || await fs.mkdtemp(path.join(os.tmpdir(), 'mock-extract-7z-'));
-  await fs.mkdir(extractPath, { recursive: true });
-  
-  mockExtractedPaths.set(file, extractPath);
-  return extractPath;
-});, and caching functionality
+ * Used for testing tool download, extraction, and caching functionality
  * 
  * SECURITY NOTE: All input sanitization functions are included to prevent
  * CodeQL security warnings about path traversal vulnerabilities in test code.
@@ -28,10 +15,25 @@ const mockExtractedPaths = new Map<string, string>();
 const mockCachedTools = new Map<string, Map<string, string>>(); // toolName -> version -> path
 const mockDownloadedFiles = new Map<string, string>();
 
+// Track temp directories created by mocks for cleanup
+const mockCreatedTempDirs = new Set<string>();
+
 // Export state for test assertions
 export const extractedPaths = mockExtractedPaths;
 export const cachedTools = mockCachedTools;
 export const downloadedFiles = mockDownloadedFiles;
+
+/**
+ * Cleanup function to remove all temp directories created by mocks
+ * Should be called in test cleanup/teardown (e.g., afterEach or afterAll)
+ */
+export const cleanupMockTempDirs = async (): Promise<void> => {
+  const fs = require('fs/promises');
+  for (const tempDir of mockCreatedTempDirs) {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
+  mockCreatedTempDirs.clear();
+};
 
 /**
  * SECURITY NOTE: All path-related inputs (URLs, file names, tool names, versions) 
@@ -66,6 +68,11 @@ export const extractZip = jest.fn(async (file: string, dest?: string): Promise<s
   const extractPath = dest || await fs.mkdtemp(path.join(os.tmpdir(), 'mock-extract-zip-'));
   await fs.mkdir(extractPath, { recursive: true });
   
+  // Track temp directory for cleanup
+  if (!dest) {
+    mockCreatedTempDirs.add(extractPath);
+  }
+  
   mockExtractedPaths.set(file, extractPath);
   return extractPath;
 });
@@ -86,6 +93,11 @@ export const extractTar = jest.fn(async (file: string, dest?: string, flags?: st
   const extractPath = dest || await fs.mkdtemp(path.join(os.tmpdir(), 'mock-extract-tar-'));
   await fs.mkdir(extractPath, { recursive: true });
   
+  // Track temp directory for cleanup
+  if (!dest) {
+    mockCreatedTempDirs.add(extractPath);
+  }
+  
   mockExtractedPaths.set(file, extractPath);
   return extractPath;
 });
@@ -104,6 +116,9 @@ export const extract7z = jest.fn(async (file: string, dest?: string): Promise<st
   // Creates directory with restrictive permissions and guaranteed unique name
   const safeBasename = path.basename(file, '.7z').replace(/[^a-zA-Z0-9-_]/g, '_');
   const extractPath = await fs.mkdtemp(path.join(os.tmpdir(), `mock-extract-7z-${safeBasename}-`));
+  
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(extractPath);
   
   mockExtractedPaths.set(file, extractPath);
   return extractPath;
@@ -124,6 +139,9 @@ export const downloadTool = jest.fn(async (url: string, dest?: string): Promise<
   const safeFileName = path.basename(url).replace(/[^a-zA-Z0-9-_.]/g, '_');
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `mock-download-${safeFileName}-`));
   const downloadPath = path.join(tempDir, safeFileName || 'download');
+  
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(tempDir);
   
   // Create empty file (or small mock content)
   await fs.writeFile(downloadPath, 'Mock download content', 'utf-8');
@@ -148,6 +166,9 @@ export const cacheDir = jest.fn(async (sourceDir: string, tool: string, version:
   const safeVersion = version.replace(/[^a-zA-Z0-9-_.]/g, '_');
   const cachePath = await fs.mkdtemp(path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-`));
   
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(cachePath);
+  
   if (!mockCachedTools.has(tool)) {
     mockCachedTools.set(tool, new Map());
   }
@@ -170,6 +191,9 @@ export const cacheFile = jest.fn(async (sourceFile: string, targetFile: string, 
   const safeTool = tool.replace(/[^a-zA-Z0-9-_]/g, '_');
   const safeVersion = version.replace(/[^a-zA-Z0-9-_.]/g, '_');
   const cachePath = await fs.mkdtemp(path.join(os.tmpdir(), `mock-cache-${safeTool}-${safeVersion}-`));
+  
+  // Track temp directory for cleanup
+  mockCreatedTempDirs.add(cachePath);
   
   if (!mockCachedTools.has(tool)) {
     mockCachedTools.set(tool, new Map());

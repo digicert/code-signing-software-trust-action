@@ -162,6 +162,13 @@ describe('utils', () => {
       await fs.writeFile(path.join(testDir, 'subdir', 'nested.txt'), 'nested content');
     });
 
+    afterEach(async () => {
+      // Clean up test directory if it still exists
+      if (testDir) {
+        await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
+      }
+    });
+
     it('should remove directory and all contents', async () => {
       await rmDir(testDir);
       
