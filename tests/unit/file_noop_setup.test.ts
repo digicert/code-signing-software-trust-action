@@ -36,12 +36,9 @@ describe('file_noop_setup', () => {
         const stats = await fs.stat(dirPath);
         expect(stats.isDirectory()).toBe(true);
 
-        // Verify file was copied with target name
+        // Verify file was copied with target name and content matches
+        // SECURITY: Direct file read avoids TOCTOU race condition (CWE-367)
         const targetPath = path.join(dirPath, targetName);
-        const fileExists = await fs.access(targetPath).then(() => true).catch(() => false);
-        expect(fileExists).toBe(true);
-
-        // Verify content matches
         const content = await fs.readFile(targetPath, 'utf-8');
         expect(content).toBe('test content');
       });
@@ -85,9 +82,10 @@ describe('file_noop_setup', () => {
       for (const targetName of targetNames) {
         const resultDir = await wrapInDirectory(sourceFile, targetName, callback);
 
+        // SECURITY: Use fs.stat() directly to avoid TOCTOU race condition (CWE-367)
         const targetPath = path.join(resultDir, targetName);
-        const exists = await fs.access(targetPath).then(() => true).catch(() => false);
-        expect(exists).toBe(true);
+        const stats = await fs.stat(targetPath);
+        expect(stats.isFile()).toBe(true);
 
         await rmDir(resultDir);
       }
@@ -199,9 +197,10 @@ describe('file_noop_setup', () => {
       for (const targetName of specialNames) {
         const resultDir = await wrapInDirectory(sourceFile, targetName, callback);
 
+        // SECURITY: Use fs.stat() directly to avoid TOCTOU race condition (CWE-367)
         const targetPath = path.join(resultDir, targetName);
-        const exists = await fs.access(targetPath).then(() => true).catch(() => false);
-        expect(exists).toBe(true);
+        const stats = await fs.stat(targetPath);
+        expect(stats.isFile()).toBe(true);
 
         await rmDir(resultDir);
       }
@@ -265,9 +264,10 @@ describe('file_noop_setup', () => {
       const stats = await fs.stat(resultDir);
       expect(stats.isDirectory()).toBe(true);
 
+      // SECURITY: Use fs.stat() directly to avoid TOCTOU race condition (CWE-367)
       const targetPath = path.join(resultDir, targetName);
-      const fileExists = await fs.access(targetPath).then(() => true).catch(() => false);
-      expect(fileExists).toBe(true);
+      const fileStats = await fs.stat(targetPath);
+      expect(fileStats.isFile()).toBe(true);
 
       await rmDir(resultDir);
     });
