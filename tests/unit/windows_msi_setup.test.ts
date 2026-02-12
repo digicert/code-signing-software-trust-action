@@ -14,21 +14,25 @@ import { getExecOutput } from '../__mocks__/@actions/exec';
 describe('windows_msi_setup.ts - Mocked Exec Tests', () => {
     let testMsiPath: string;
     let callbackExecuted: boolean;
+    let tempDir: string;
 
     beforeEach(async () => {
         resetCoreMocks();
         jest.clearAllMocks();
         callbackExecuted = false;
 
-        // Create a fake MSI file
-        testMsiPath = path.join(os.tmpdir(), `test-${Date.now()}.msi`);
+        // Create a secure temporary directory for test files
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'windows-msi-test-'));
+        
+        // Create a fake MSI file inside the secure temp directory
+        testMsiPath = path.join(tempDir, 'test.msi');
         await fs.writeFile(testMsiPath, 'fake msi content');
     });
 
     afterEach(async () => {
-        // Cleanup
-        if (testMsiPath) {
-            await fs.unlink(testMsiPath).catch(() => {});
+        // Cleanup: remove entire temp directory
+        if (tempDir) {
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         }
     });
 
@@ -294,7 +298,8 @@ describe('windows_msi_setup.ts - Mocked Exec Tests', () => {
 
     describe('Edge Cases', () => {
         test('should handle non-existent MSI file', async () => {
-            const nonExistentMsi = path.join(os.tmpdir(), 'nonexistent.msi');
+            // Use path within secure temp directory
+            const nonExistentMsi = path.join(tempDir, 'nonexistent.msi');
 
             (getExecOutput as jest.Mock).mockImplementation(async (cmd: string, args: string[]) => {
                 if (args && args[0] === '/x') {

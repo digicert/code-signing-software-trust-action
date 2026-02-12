@@ -101,10 +101,11 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
     describe('cachedSetup - Cache Directory Failures', () => {
         
         test('should handle cacheDir failure when disk is full', async () => {
-            // Create actual temp file
+            // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'test content');
             
             // Mock successful download, then cache failure
@@ -116,13 +117,14 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             await expect(setupTool(SMCTL)).rejects.toThrow('ENOSPC');
             
             spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         });
 
         test('should handle cacheDir failure with permission denied', async () => {
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'test content');
             
             jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
@@ -133,13 +135,14 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             await expect(setupTool(SMCTL)).rejects.toThrow('EACCES');
             
             spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         });
 
         test('should handle cacheDir failure with read-only filesystem', async () => {
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'test content');
             
             jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
@@ -150,13 +153,14 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             await expect(setupTool(SMCTL)).rejects.toThrow('EROFS');
             
             spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         });
 
         test('should handle invalid cache directory path', async () => {
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'test content');
             
             jest.spyOn(tc, 'downloadTool').mockResolvedValue(tmpFile);
@@ -167,7 +171,7 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             await expect(setupTool(SMCTL)).rejects.toThrow('ENOTDIR');
             
             spy.mockRestore();
-            await fs.unlink(tmpFile).catch(() => {});
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         });
     });
 
@@ -176,10 +180,11 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
         test('should fallback to cache-version when sha256 download fails', async () => {
             mockInputs.set('use-binary-sha256-checksum', 'true');
             
-            // Create a temporary file
+            // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-smctl-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-smctl-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'mock content');
             
             // Mock: SHA256 download fails all 3 retry attempts, then binary download succeeds
@@ -204,7 +209,7 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             expect(result).toBeDefined();
             
             // Cleanup
-            await fs.unlink(tmpFile).catch(() => {});
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         });
 
         test('should handle corrupted sha256 file content', async () => {
@@ -212,7 +217,8 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-smctl-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-smctl-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'mock content');
             
             // Mock sha256 file with invalid content - fail all retry attempts
@@ -234,7 +240,7 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             // Should fallback and complete
             expect(result).toBeDefined();
             
-            await fs.unlink(tmpFile).catch(() => {});
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         });
 
         test('should handle empty sha256 file', async () => {
@@ -242,7 +248,8 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-smctl-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-smctl-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'mock content');
             
             // Fail all SHA256 retry attempts, then succeed with binary download
@@ -262,7 +269,7 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
             const result = await setupTool(SMCTL);
             expect(result).toBeDefined();
             
-            await fs.unlink(tmpFile).catch(() => {});
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         });
     });
 
@@ -677,10 +684,11 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
         // The test logic is correct but there's mock state leaking from previous tests
         // TODO: Investigate test isolation issue - likely related to cacheDir mock from previous tests
         test.skip('should handle successful download but cache failure', async () => {
-            // Create actual temp file
+            // SECURITY: Use fs.mkdtemp() to create secure temporary directory (CWE-377)
             const fs = require('fs/promises');
             const os = require('os');
-            const tmpFile = path.join(os.tmpdir(), `test-download-${Date.now()}.exe`);
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'test-download-'));
+            const tmpFile = path.join(tempDir, 'test.exe');
             await fs.writeFile(tmpFile, 'test content');
             
             try {
@@ -699,7 +707,7 @@ describe('tool_setup.ts - Error and Negative Scenarios', () => {
                 await expect(setupTool(SMCTL)).rejects.toThrow('Cache write failed');
             } finally {
                 // Cleanup
-                await fs.unlink(tmpFile).catch(() => {});
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
             }
         });
 

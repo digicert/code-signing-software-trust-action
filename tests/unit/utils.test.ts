@@ -3,9 +3,11 @@
  * Tests utility functions in isolation
  */
 
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import {
   randomFileName,
   randomDirName,
@@ -152,7 +154,8 @@ describe('utils', () => {
     let testDir: string;
 
     beforeEach(async () => {
-      testDir = await createSecureTempDir('rmdir-test-');
+      // Use fs.mkdtemp for secure temp directory creation in tests
+      testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rmdir-test-'));
       // Create some content
       await fs.writeFile(path.join(testDir, 'file.txt'), 'test content');
       await fs.mkdir(path.join(testDir, 'subdir'));
@@ -167,7 +170,8 @@ describe('utils', () => {
     });
 
     it('should not throw error if directory does not exist', async () => {
-      const nonExistentDir = path.join(tmpDir, 'non-existent-' + Date.now());
+      // Use crypto.randomUUID() instead of Date.now() for unique path
+      const nonExistentDir = path.join(tmpDir, 'non-existent-' + crypto.randomUUID());
       
       // Should not throw
       await expect(rmDir(nonExistentDir)).resolves.not.toThrow();
@@ -266,7 +270,8 @@ describe('utils', () => {
     let testDir: string;
 
     beforeEach(async () => {
-      testDir = await createSecureTempDir('sha256-test-');
+      // Use fs.mkdtemp for secure temp directory creation in tests
+      testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sha256-test-'));
     });
 
     afterEach(async () => {

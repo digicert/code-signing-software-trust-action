@@ -3,11 +3,12 @@
  * Tests the wrapInDirectory functionality
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import { wrapInDirectory } from '../../src/file_noop_setup';
-import { createSecureTempDir, rmDir } from '../../src/utils';
+import { rmDir } from '../../src/utils';
 
 describe('file_noop_setup', () => {
   describe('wrapInDirectory', () => {
@@ -15,8 +16,8 @@ describe('file_noop_setup', () => {
     let sourceFile: string;
 
     beforeEach(async () => {
-      // Create a temporary test directory and a source file
-      testDir = await createSecureTempDir('noop-test-');
+      // Create a temporary test directory with secure permissions
+      testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'noop-test-'));
       sourceFile = path.join(testDir, 'source-file.txt');
       await fs.writeFile(sourceFile, 'test content');
     });
@@ -24,7 +25,7 @@ describe('file_noop_setup', () => {
     afterEach(async () => {
       // Clean up test directory
       if (testDir) {
-        await rmDir(testDir);
+        await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
       }
     });
 

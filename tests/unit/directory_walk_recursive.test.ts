@@ -6,22 +6,22 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import { walk } from '../../src/directory_walk_recursive';
-import { createSecureTempDir, rmDir } from '../../src/utils';
 
 describe('directory_walk_recursive', () => {
   describe('walk', () => {
     let testDir: string;
 
     beforeEach(async () => {
-      // Create a temporary test directory
-      testDir = await createSecureTempDir('walk-test-');
+      // Create a temporary test directory with secure permissions
+      testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'walk-test-'));
     });
 
     afterEach(async () => {
       // Clean up test directory
       if (testDir) {
-        await rmDir(testDir);
+        await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
       }
     });
 
