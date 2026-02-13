@@ -237,21 +237,23 @@ function downloadUrl(tool: ToolMetadata) {
 
 async function postDownload(tool: ToolMetadata, downlodedFilePath: string, callback: archiveExtractCallback) {
     core.info(`Setting the ${tool.archiveType} file ${downlodedFilePath}`);
-    var outputDir: Promise<string>;
-    return await new Promise<string>(resolve => {
-        if (!tool.archived) {
-            outputDir = wrapInDirectory(downlodedFilePath, tool.fName, callback);
-        } else if (tool.archiveType === ArchiveType.DMG) {
-            outputDir = extractDmg(downlodedFilePath, callback);
-        } else if (tool.archiveType === ArchiveType.MSI) {
-            outputDir = installMsi(downlodedFilePath, callback)
-        } else if (tool.archiveType === ArchiveType.ZIP) {
-            outputDir = extractZip(downlodedFilePath, callback);
-        } else if (tool.archiveType === ArchiveType.TAR) {
-            outputDir = extractTar(downlodedFilePath, callback);
-        };
-        resolve(outputDir);
-    });
+    
+    let outputDir: string;
+    if (!tool.archived) {
+        outputDir = await wrapInDirectory(downlodedFilePath, tool.fName, callback);
+    } else if (tool.archiveType === ArchiveType.DMG) {
+        outputDir = await extractDmg(downlodedFilePath, callback);
+    } else if (tool.archiveType === ArchiveType.MSI) {
+        outputDir = await installMsi(downlodedFilePath, callback);
+    } else if (tool.archiveType === ArchiveType.ZIP) {
+        outputDir = await extractZip(downlodedFilePath, callback);
+    } else if (tool.archiveType === ArchiveType.TAR) {
+        outputDir = await extractTar(downlodedFilePath, callback);
+    } else {
+        throw new Error(`Unsupported archive type: ${tool.archiveType}`);
+    }
+    
+    return outputDir;
 };
 
 async function cachedSetup(tool: ToolMetadata) {

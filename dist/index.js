@@ -652,26 +652,26 @@ function downloadUrl(tool) {
 ;
 async function postDownload(tool, downlodedFilePath, callback) {
     core.info(`Setting the ${tool.archiveType} file ${downlodedFilePath}`);
-    var outputDir;
-    return await new Promise(resolve => {
-        if (!tool.archived) {
-            outputDir = (0, file_noop_setup_1.wrapInDirectory)(downlodedFilePath, tool.fName, callback);
-        }
-        else if (tool.archiveType === "DMG" /* ArchiveType.DMG */) {
-            outputDir = (0, macos_dmg_setup_1.extractDmg)(downlodedFilePath, callback);
-        }
-        else if (tool.archiveType === "MSI" /* ArchiveType.MSI */) {
-            outputDir = (0, windows_msi_setup_1.installMsi)(downlodedFilePath, callback);
-        }
-        else if (tool.archiveType === "ZIP" /* ArchiveType.ZIP */) {
-            outputDir = (0, zip_setup_1.extractZip)(downlodedFilePath, callback);
-        }
-        else if (tool.archiveType === "TAR" /* ArchiveType.TAR */) {
-            outputDir = (0, zip_setup_1.extractTar)(downlodedFilePath, callback);
-        }
-        ;
-        resolve(outputDir);
-    });
+    let outputDir;
+    if (!tool.archived) {
+        outputDir = await (0, file_noop_setup_1.wrapInDirectory)(downlodedFilePath, tool.fName, callback);
+    }
+    else if (tool.archiveType === "DMG" /* ArchiveType.DMG */) {
+        outputDir = await (0, macos_dmg_setup_1.extractDmg)(downlodedFilePath, callback);
+    }
+    else if (tool.archiveType === "MSI" /* ArchiveType.MSI */) {
+        outputDir = await (0, windows_msi_setup_1.installMsi)(downlodedFilePath, callback);
+    }
+    else if (tool.archiveType === "ZIP" /* ArchiveType.ZIP */) {
+        outputDir = await (0, zip_setup_1.extractZip)(downlodedFilePath, callback);
+    }
+    else if (tool.archiveType === "TAR" /* ArchiveType.TAR */) {
+        outputDir = await (0, zip_setup_1.extractTar)(downlodedFilePath, callback);
+    }
+    else {
+        throw new Error(`Unsupported archive type: ${tool.archiveType}`);
+    }
+    return outputDir;
 }
 ;
 async function cachedSetup(tool) {
