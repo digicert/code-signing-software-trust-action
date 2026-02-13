@@ -650,28 +650,28 @@ function downloadUrl(tool) {
     return `${cdn}/${tool.dlName}`;
 }
 ;
-async function postDownload(tool, downlodedFilePath, callback) {
-    core.info(`Setting the ${tool.archiveType} file ${downlodedFilePath}`);
-    let outputDir;
+async function postDownload(tool, downloadedFilePath, callback) {
+    core.info(`Setting the ${tool.archiveType} file ${downloadedFilePath}`);
     if (!tool.archived) {
-        outputDir = await (0, file_noop_setup_1.wrapInDirectory)(downlodedFilePath, tool.fName, callback);
+        await (0, file_noop_setup_1.wrapInDirectory)(downloadedFilePath, tool.fName, callback);
     }
     else if (tool.archiveType === "DMG" /* ArchiveType.DMG */) {
-        outputDir = await (0, macos_dmg_setup_1.extractDmg)(downlodedFilePath, callback);
+        await (0, macos_dmg_setup_1.extractDmg)(downloadedFilePath, callback);
     }
     else if (tool.archiveType === "MSI" /* ArchiveType.MSI */) {
-        outputDir = await (0, windows_msi_setup_1.installMsi)(downlodedFilePath, callback);
+        await (0, windows_msi_setup_1.installMsi)(downloadedFilePath, callback);
     }
     else if (tool.archiveType === "ZIP" /* ArchiveType.ZIP */) {
-        outputDir = await (0, zip_setup_1.extractZip)(downlodedFilePath, callback);
+        await (0, zip_setup_1.extractZip)(downloadedFilePath, callback);
     }
     else if (tool.archiveType === "TAR" /* ArchiveType.TAR */) {
-        outputDir = await (0, zip_setup_1.extractTar)(downlodedFilePath, callback);
+        await (0, zip_setup_1.extractTar)(downloadedFilePath, callback);
     }
     else {
+        // This should never happen as all tools in staticToolDefintions have valid archive types
+        // If this is reached, it indicates a programming error in tool metadata definition
         throw new Error(`Unsupported archive type: ${tool.archiveType}`);
     }
-    return outputDir;
 }
 ;
 async function cachedSetup(tool) {
@@ -740,7 +740,9 @@ async function cachedSetup(tool) {
         }
         // Variable to capture the cached tool path from inside the callback
         let cachedToolPath;
-        const outputDir = await postDownload(tool, downloadedPath, async (postPath) => {
+        // postDownload extracts/installs the archive and calls the callback while files are accessible
+        // The callback caches the tool before cleanup (e.g., before DMG unmount)
+        await postDownload(tool, downloadedPath, async (postPath) => {
             core.info(`Performing post download activities for ${postPath}`);
             // IMPORTANT: Cache the tool BEFORE unmounting (for DMG) or cleaning up (for other archives)
             // The caching must happen inside the callback to ensure files are still accessible
@@ -750,7 +752,7 @@ async function cachedSetup(tool) {
             cachedToolPath = await tc.cacheDir(cachePath, tool.name, version);
             core.info(`${tool.name} cached @ ${cachedToolPath}`);
         });
-        // Use the cached path from the callback
+        // Use the cached path from the callback (guaranteed to be set if postDownload succeeds)
         toolPath = cachedToolPath;
         if (tool.executePermissionRequired) {
             await (0, add_execute_permission_1.chmod)(toolPath);

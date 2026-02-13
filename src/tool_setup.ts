@@ -235,25 +235,24 @@ function downloadUrl(tool: ToolMetadata) {
     return `${cdn}/${tool.dlName}`;
 };
 
-async function postDownload(tool: ToolMetadata, downlodedFilePath: string, callback: archiveExtractCallback) {
-    core.info(`Setting the ${tool.archiveType} file ${downlodedFilePath}`);
+async function postDownload(tool: ToolMetadata, downloadedFilePath: string, callback: archiveExtractCallback): Promise<void> {
+    core.info(`Setting the ${tool.archiveType} file ${downloadedFilePath}`);
     
-    let outputDir: string;
     if (!tool.archived) {
-        outputDir = await wrapInDirectory(downlodedFilePath, tool.fName, callback);
+        await wrapInDirectory(downloadedFilePath, tool.fName, callback);
     } else if (tool.archiveType === ArchiveType.DMG) {
-        outputDir = await extractDmg(downlodedFilePath, callback);
+        await extractDmg(downloadedFilePath, callback);
     } else if (tool.archiveType === ArchiveType.MSI) {
-        outputDir = await installMsi(downlodedFilePath, callback);
+        await installMsi(downloadedFilePath, callback);
     } else if (tool.archiveType === ArchiveType.ZIP) {
-        outputDir = await extractZip(downlodedFilePath, callback);
+        await extractZip(downloadedFilePath, callback);
     } else if (tool.archiveType === ArchiveType.TAR) {
-        outputDir = await extractTar(downlodedFilePath, callback);
+        await extractTar(downloadedFilePath, callback);
     } else {
+        // This should never happen as all tools in staticToolDefintions have valid archive types
+        // If this is reached, it indicates a programming error in tool metadata definition
         throw new Error(`Unsupported archive type: ${tool.archiveType}`);
     }
-    
-    return outputDir;
 };
 
 async function cachedSetup(tool: ToolMetadata) {
@@ -338,7 +337,9 @@ async function cachedSetup(tool: ToolMetadata) {
         // Variable to capture the cached tool path from inside the callback
         let cachedToolPath: string;
         
-        const outputDir = await postDownload(tool, downloadedPath, async(postPath: string) => {
+        // postDownload extracts/installs the archive and calls the callback while files are accessible
+        // The callback caches the tool before cleanup (e.g., before DMG unmount)
+        await postDownload(tool, downloadedPath, async(postPath: string) => {
             core.info(`Performing post download activities for ${postPath}`);
             
             // IMPORTANT: Cache the tool BEFORE unmounting (for DMG) or cleaning up (for other archives)
@@ -350,7 +351,7 @@ async function cachedSetup(tool: ToolMetadata) {
             core.info(`${tool.name} cached @ ${cachedToolPath}`);
         });
 
-        // Use the cached path from the callback
+        // Use the cached path from the callback (guaranteed to be set if postDownload succeeds)
         toolPath = cachedToolPath!;
 
         if (tool.executePermissionRequired) {
