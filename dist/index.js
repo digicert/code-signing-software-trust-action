@@ -738,16 +738,20 @@ async function cachedSetup(tool) {
                 `(use-binary-sha256-checksum is disabled or checksum file unavailable). ` +
                 `This reduces security against supply chain attacks.`);
         }
+        // Variable to capture the cached tool path from inside the callback
+        let cachedToolPath;
         const outputDir = await postDownload(tool, downloadedPath, async (postPath) => {
             core.info(`Performing post download activities for ${postPath}`);
+            // IMPORTANT: Cache the tool BEFORE unmounting (for DMG) or cleaning up (for other archives)
+            // The caching must happen inside the callback to ensure files are still accessible
+            const cachePath = tool.archived && tool.explodedDirectoryName ?
+                path.join(postPath, tool.explodedDirectoryName) : postPath;
+            core.info(`Caching ${tool.name}@${version} from ${cachePath}`);
+            cachedToolPath = await tc.cacheDir(cachePath, tool.name, version);
+            core.info(`${tool.name} cached @ ${cachedToolPath}`);
         });
-        const cachePath = tool.archived && tool.explodedDirectoryName ?
-            path.join(outputDir, tool.explodedDirectoryName) : outputDir;
-        core.info(`Caching ${tool.name}@${version} from ${cachePath}`);
-        toolPath = await tc.cacheDir(cachePath, tool.name, version).then(rv => {
-            core.info(`${tool.name} cached @ ${rv}`);
-            return rv;
-        });
+        // Use the cached path from the callback
+        toolPath = cachedToolPath;
         if (tool.executePermissionRequired) {
             await (0, add_execute_permission_1.chmod)(toolPath);
         }

@@ -335,17 +335,23 @@ async function cachedSetup(tool: ToolMetadata) {
             );
         }
 
+        // Variable to capture the cached tool path from inside the callback
+        let cachedToolPath: string;
+        
         const outputDir = await postDownload(tool, downloadedPath, async(postPath: string) => {
             core.info(`Performing post download activities for ${postPath}`);
+            
+            // IMPORTANT: Cache the tool BEFORE unmounting (for DMG) or cleaning up (for other archives)
+            // The caching must happen inside the callback to ensure files are still accessible
+            const cachePath = tool.archived && tool.explodedDirectoryName ?
+                path.join(postPath, tool.explodedDirectoryName!) : postPath;
+            core.info(`Caching ${tool.name}@${version} from ${cachePath}`);
+            cachedToolPath = await tc.cacheDir(cachePath, tool.name, version);
+            core.info(`${tool.name} cached @ ${cachedToolPath}`);
         });
 
-        const cachePath = tool.archived && tool.explodedDirectoryName ?
-            path.join(outputDir, tool.explodedDirectoryName!) : outputDir;
-        core.info(`Caching ${tool.name}@${version} from ${cachePath}`);
-        toolPath = await tc.cacheDir(cachePath, tool.name, version).then(rv => {
-            core.info(`${tool.name} cached @ ${rv}`);
-            return rv;
-        });
+        // Use the cached path from the callback
+        toolPath = cachedToolPath!;
 
         if (tool.executePermissionRequired) {
             await chmod(toolPath);
