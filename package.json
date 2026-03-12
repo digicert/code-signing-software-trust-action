@@ -2,6 +2,9 @@
     "name": "code-signing-software-trust-action",
     "version": "1.0.0",
     "main": "dist/index.js",
+    "engines": {
+        "node": ">=20"
+    },
     "scripts": {
         "build": "tsc && ncc build lib/index.js",
         "clean": "rimraf lib build dist",
