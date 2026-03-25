@@ -85,6 +85,6 @@ outputs:
   PKCS11_CONFIG:
     description: 'Absolute path to the generated pkcs11Properties.cfg file used for PKCS#11 configuration'
 runs:
-  using: node20
+  using: node24
   main: 'dist/index.js'
   post-if: success()
