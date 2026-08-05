@@ -1,0 +1,7 @@
+name: DigiCert Code Scan
+on: workflow_dispatch
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This is just a placeholder"
