@@ -1,7 +1,12 @@
 name: DigiCert Code Scan
 on: workflow_dispatch
 jobs:
-  noop:
+  code_scan:
     runs-on: ubuntu-latest
+    
     steps:
-      - run: echo "This is just a placeholder"
+      - name: Run DigiCert Code Scan composite action
+        uses: ./.github/actions/digicert-code-scan
+        with:
+          region: cluster-local
+          api-key: ${{ secrets.DIGICERT_BACKEND_API_KEY }}
