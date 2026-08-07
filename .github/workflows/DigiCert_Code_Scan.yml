@@ -1,7 +1,26 @@
-name: DigiCert Code Scan
-on: workflow_dispatch
+name: DigiCert One Time Code Scan Action (Stage)
+
+on:
+  workflow_dispatch:
+
 jobs:
-  noop:
+  scan:
+    name: CodeQL + SBOM
     runs-on: ubuntu-latest
+
+    # CodeQL + trivy + upload-artifact need these.
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+
     steps:
-      - run: echo "This is just a placeholder"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: DigiCert One Time Code Scan Action Stage
+        uses: digicert/digicert-code-monitoring-action@master
+        with:
+          region: gp2-stage
+          env: stage
+          api-key: ${{ secrets.DIGICERT_BACKEND_API_KEY }}
