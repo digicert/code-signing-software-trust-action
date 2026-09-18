@@ -66,6 +66,526 @@ async function chmod(toolPath) {
 
 /***/ }),
 
+/***/ 63892:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.attestInspect = attestInspect;
+const exec = __importStar(__nccwpck_require__(95236));
+const core = __importStar(__nccwpck_require__(37484));
+const fs = __importStar(__nccwpck_require__(91943));
+const tool_setup_1 = __nccwpck_require__(63082);
+const utils_1 = __nccwpck_require__(69277);
+/**
+ * Decode and display DSSE attestation structure without verification.
+ * This is a fully offline operation (no network calls, no credentials needed).
+ */
+async function attestInspect(toolPath) {
+    const attestationFile = core.getInput('attestation-file');
+    if (!(0, utils_1.isValidStr)(attestationFile)) {
+        core.info(`Set attestation-file to inspect attestation.`);
+        return;
+    }
+    core.info(`Inspecting attestation: ${attestationFile}`);
+    // Validate attestation file exists
+    try {
+        await fs.access(attestationFile);
+    }
+    catch (error) {
+        throw new Error(`Cannot read attestation file: ${attestationFile}`);
+    }
+    // Build smctl attest inspect command
+    const args = ['attest', 'inspect', '--attestation-file', attestationFile];
+    // Capture output
+    let capturedOutput = '';
+    const tool = toolPath || tool_setup_1.SMCTL;
+    try {
+        core.info(`Executing: ${tool} ${args.join(' ')}`);
+        const result = await exec.getExecOutput(tool, args, {
+            silent: true, // Don't log output to console, we'll handle it
+            ignoreReturnCode: false,
+        });
+        capturedOutput = result.stdout;
+        if (!capturedOutput) {
+            throw new Error('No output from attest inspect command');
+        }
+        // Parse output JSON
+        let inspectionResult;
+        try {
+            inspectionResult = JSON.parse(capturedOutput);
+        }
+        catch (error) {
+            throw new Error(`Failed to parse attestation inspection output: ${error.message}`);
+        }
+        // Extract metadata
+        const predicateType = inspectionResult.predicateType || 'unknown';
+        const statementType = inspectionResult.statementType || 'https://in-toto.io/Statement/v1';
+        const subjectInfo = inspectionResult.subjects?.[0] || {};
+        const signatureInfo = inspectionResult.signatures?.[0] || {};
+        // Handle output file and formatting
+        const outputFormat = core.getInput('attest-output-format') || 'json';
+        let outputContent;
+        if (outputFormat === 'text') {
+            outputContent = formatAsText(inspectionResult);
+        }
+        else if (outputFormat === 'summary') {
+            outputContent = formatAsSummary(inspectionResult);
+        }
+        else {
+            // Default: json
+            outputContent = JSON.stringify(inspectionResult, null, 2);
+        }
+        // Write to output file if specified
+        const outputFile = core.getInput('attest-output');
+        if ((0, utils_1.isValidStr)(outputFile)) {
+            try {
+                await fs.writeFile(outputFile, outputContent, 'utf-8');
+                core.info(`Inspection output written to: ${outputFile}`);
+            }
+            catch (error) {
+                throw new Error(`Failed to write output file: ${error.message}`);
+            }
+        }
+        else {
+            // Print to console
+            core.info(`\n${outputContent}\n`);
+        }
+        // Set GitHub Action outputs
+        core.setOutput('attestation-content', capturedOutput);
+        core.setOutput('predicate-type', predicateType);
+        core.setOutput('subject-name', subjectInfo.name || 'unknown');
+        core.setOutput('subject-digest', subjectInfo.digest?.sha256 || 'unknown');
+        core.setOutput('signature-keyid', signatureInfo.keyid || 'unknown');
+        core.info(`✅ Attestation inspection completed successfully`);
+    }
+    catch (error) {
+        throw new Error(`Attestation inspection failed: ${error.message}`);
+    }
+}
+/**
+ * Format inspection result as human-readable text
+ */
+function formatAsText(result) {
+    const lines = [];
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('                  ATTESTATION INSPECTION                     ');
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push(`📋 Statement Type:     ${result.statementType}`);
+    lines.push(`📦 Payload Type:       ${result.payloadType}`);
+    lines.push('');
+    lines.push('🎯 SUBJECT');
+    if (result.subjects && result.subjects.length > 0) {
+        result.subjects.forEach((subject, index) => {
+            lines.push(`   [${index}] Name:   ${subject.name}`);
+            lines.push(`       Digest:  ${subject.digest.sha256}`);
+        });
+    }
+    else {
+        lines.push('   (none)');
+    }
+    lines.push('');
+    lines.push('📋 PREDICATE');
+    lines.push(`   Type:  ${result.predicateType}`);
+    if (result.predicate) {
+        const predicateKeys = Object.keys(result.predicate).slice(0, 3);
+        predicateKeys.forEach((key) => {
+            const value = result.predicate[key];
+            const displayValue = typeof value === 'string' ? value : JSON.stringify(value).slice(0, 50);
+            lines.push(`   ${key}: ${displayValue}`);
+        });
+        if (Object.keys(result.predicate).length > 3) {
+            lines.push(`   ... and ${Object.keys(result.predicate).length - 3} more fields`);
+        }
+    }
+    lines.push('');
+    lines.push('🔐 SIGNATURE');
+    if (result.signatures && result.signatures.length > 0) {
+        result.signatures.forEach((sig, index) => {
+            lines.push(`   [${index}] KeyID:     ${sig.keyid}`);
+            lines.push(`       Algorithm: ${sig.algorithm}`);
+            if (sig.sig) {
+                lines.push(`       Sig:       ${sig.sig.slice(0, 32)}...`);
+            }
+        });
+    }
+    else {
+        lines.push('   (none)');
+    }
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════');
+    return lines.join('\n');
+}
+/**
+ * Format inspection result as summary (key fields only)
+ */
+function formatAsSummary(result) {
+    const subject = result.subjects?.[0] || {};
+    const signature = result.signatures?.[0] || {};
+    return [
+        `Predicate Type:     ${result.predicateType}`,
+        `Subject Name:       ${subject.name}`,
+        `Subject Digest:     ${subject.digest?.sha256}`,
+        `Signature KeyID:    ${signature.keyid}`,
+        `Algorithm:          ${signature.algorithm}`,
+    ].join('\n');
+}
+
+
+/***/ }),
+
+/***/ 2971:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.attestSign = attestSign;
+const exec = __importStar(__nccwpck_require__(95236));
+const core = __importStar(__nccwpck_require__(37484));
+const fs = __importStar(__nccwpck_require__(91943));
+const tool_setup_1 = __nccwpck_require__(63082);
+const utils_1 = __nccwpck_require__(69277);
+/**
+ * Create an in-toto DSSE attestation by signing evidence with an STM keypair.
+ * This operation requires network access to the STM backend.
+ */
+async function attestSign(toolPath) {
+    const input = core.getInput('attestation-input');
+    const keypairAlias = core.getInput('keypair-alias');
+    if (!((0, utils_1.isValidStr)(input) && (0, utils_1.isValidStr)(keypairAlias))) {
+        core.info(`Set attestation-input and keypair-alias to create attestation.`);
+        return;
+    }
+    core.info(`Creating attestation from evidence file: ${input}`);
+    // Validate input file exists
+    try {
+        await fs.access(input);
+    }
+    catch (error) {
+        throw new Error(`Cannot read attestation input file: ${input}`);
+    }
+    // Build smctl attest sign command
+    const args = ['attest', 'sign', '--input', input, '--keypair-alias', keypairAlias];
+    // Optional: predicate type (auto-detect if not provided)
+    const attestType = core.getInput('attest-type');
+    if ((0, utils_1.isValidStr)(attestType)) {
+        args.push('--type', attestType);
+    }
+    // Optional: subject name
+    const subjectName = core.getInput('attest-subject-name');
+    if ((0, utils_1.isValidStr)(subjectName)) {
+        args.push('--subject-name', subjectName);
+    }
+    // Optional: subject digest
+    const subjectDigest = core.getInput('attest-subject-digest');
+    if ((0, utils_1.isValidStr)(subjectDigest)) {
+        args.push('--subject-digest', subjectDigest);
+    }
+    // Optional: output file path
+    let outputFile = core.getInput('attest-output');
+    if (!(0, utils_1.isValidStr)(outputFile)) {
+        outputFile = 'attestation.json';
+    }
+    args.push('--output', outputFile);
+    const tool = toolPath || tool_setup_1.SMCTL;
+    try {
+        core.info(`Executing: ${tool} ${args.join(' ')}`);
+        await exec.getExecOutput(tool, args);
+        // Verify output file exists
+        let attestationContent;
+        try {
+            attestationContent = await fs.readFile(outputFile, 'utf-8');
+        }
+        catch (error) {
+            throw new Error(`Failed to read attestation output: ${outputFile}`);
+        }
+        // Parse to extract metadata
+        const attestation = JSON.parse(attestationContent);
+        const predicateType = attestation.predicateType || 'unknown';
+        const subjectInfo = attestation.subjects?.[0] || {};
+        const signatureInfo = attestation.signatures?.[0] || {};
+        // Set GitHub Action outputs
+        core.setOutput('attestation-file', outputFile);
+        core.setOutput('attestation-content', attestationContent);
+        core.setOutput('predicate-type', predicateType);
+        core.setOutput('subject-name', subjectInfo.name || 'unknown');
+        core.setOutput('subject-digest', subjectInfo.digest?.sha256 || 'unknown');
+        core.setOutput('signature-keyid', signatureInfo.keyid || 'unknown');
+        core.info(`✅ Attestation created successfully: ${outputFile}`);
+    }
+    catch (error) {
+        throw new Error(`Attestation signing failed: ${error.message}`);
+    }
+}
+
+
+/***/ }),
+
+/***/ 69011:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.attestVerify = attestVerify;
+const exec = __importStar(__nccwpck_require__(95236));
+const core = __importStar(__nccwpck_require__(37484));
+const fs = __importStar(__nccwpck_require__(91943));
+const tool_setup_1 = __nccwpck_require__(63082);
+const utils_1 = __nccwpck_require__(69277);
+/**
+ * Verify DSSE attestation signature against trust material (public key or certificate).
+ * This is a fully offline operation (no network calls, no signing credentials needed).
+ */
+async function attestVerify(toolPath) {
+    const attestationFile = core.getInput('attestation-file');
+    const publicKey = core.getInput('attest-public-key');
+    const certificate = core.getInput('attest-certificate');
+    if (!(0, utils_1.isValidStr)(attestationFile)) {
+        core.info(`Set attestation-file to verify attestation.`);
+        return;
+    }
+    // Ensure either public-key or certificate is provided (mutually exclusive)
+    if (!(0, utils_1.isValidStr)(publicKey) && !(0, utils_1.isValidStr)(certificate)) {
+        throw new Error('Either attest-public-key or attest-certificate must be provided for verification');
+    }
+    if ((0, utils_1.isValidStr)(publicKey) && (0, utils_1.isValidStr)(certificate)) {
+        throw new Error('attest-public-key and attest-certificate are mutually exclusive');
+    }
+    core.info(`Verifying attestation: ${attestationFile}`);
+    // Validate files exist
+    try {
+        await fs.access(attestationFile);
+    }
+    catch (error) {
+        throw new Error(`Cannot read attestation file: ${attestationFile}`);
+    }
+    const trustMaterialFile = publicKey || certificate;
+    const trustMaterialType = publicKey ? 'public key' : 'certificate';
+    try {
+        await fs.access(trustMaterialFile);
+    }
+    catch (error) {
+        throw new Error(`Cannot read ${trustMaterialType} file: ${trustMaterialFile}`);
+    }
+    // Optional: validate CA bundle if certificate is provided
+    const caBundle = core.getInput('attest-ca-bundle');
+    if ((0, utils_1.isValidStr)(caBundle) && (0, utils_1.isValidStr)(certificate)) {
+        try {
+            await fs.access(caBundle);
+        }
+        catch (error) {
+            throw new Error(`Cannot read CA bundle file: ${caBundle}`);
+        }
+    }
+    // Build smctl attest verify command
+    const args = ['attest', 'verify', '--attestation-file', attestationFile];
+    if ((0, utils_1.isValidStr)(publicKey)) {
+        args.push('--public-key', publicKey);
+    }
+    else if ((0, utils_1.isValidStr)(certificate)) {
+        args.push('--certificate', certificate);
+        // Add CA bundle if provided
+        if ((0, utils_1.isValidStr)(caBundle)) {
+            args.push('--ca-bundle', caBundle);
+        }
+    }
+    // Optional filters
+    const predicateTypeFilter = core.getInput('attest-predicate-type-filter');
+    if ((0, utils_1.isValidStr)(predicateTypeFilter)) {
+        args.push('--type', predicateTypeFilter);
+    }
+    const subjectDigestFilter = core.getInput('attest-subject-digest-filter');
+    if ((0, utils_1.isValidStr)(subjectDigestFilter)) {
+        args.push('--subject-digest', subjectDigestFilter);
+    }
+    // Output format
+    const outputFormat = core.getInput('attest-output-format') || 'json';
+    args.push('--output', outputFormat);
+    // Capture output
+    let capturedOutput = '';
+    const tool = toolPath || tool_setup_1.SMCTL;
+    let verified = false;
+    try {
+        core.info(`Executing: ${tool} ${args.join(' ')}`);
+        const result = await exec.getExecOutput(tool, args, {
+            silent: true, // Don't log output to console, we'll handle it
+            ignoreReturnCode: true, // Don't fail on non-zero exit, we'll check manually
+        });
+        capturedOutput = result.stdout;
+        const exitCode = result.exitCode;
+        // Parse verification result
+        if (outputFormat === 'json') {
+            if (!capturedOutput) {
+                throw new Error('No output from attest verify command');
+            }
+            let verificationResult;
+            try {
+                verificationResult = JSON.parse(capturedOutput);
+            }
+            catch (error) {
+                throw new Error(`Failed to parse attestation verification output: ${error.message}`);
+            }
+            // Determine verification status
+            verified = verificationResult.verified === true || verificationResult.verified === 'true';
+            // Extract metadata
+            const predicateType = verificationResult.predicateType || 'unknown';
+            const subjectInfo = verificationResult.subject || {};
+            const signatureKeyid = verificationResult.signature?.keyid || verificationResult.keyid || 'unknown';
+            const signer = verificationResult.signer || {};
+            // Set outputs
+            core.setOutput('verification-result', capturedOutput);
+            core.setOutput('verified', verified.toString());
+            core.setOutput('predicate-type', predicateType);
+            core.setOutput('subject-name', subjectInfo.name || 'unknown');
+            core.setOutput('subject-digest', subjectInfo.digest?.sha256 || 'unknown');
+            core.setOutput('signature-keyid', signatureKeyid);
+            // Log result
+            if (verified) {
+                core.info(`✅ Attestation signature verification PASSED`);
+                if (signer.subject) {
+                    core.info(`   Signer: ${signer.subject}`);
+                }
+            }
+            else {
+                core.warning(`❌ Attestation signature verification FAILED`);
+            }
+        }
+        else {
+            // Text format output
+            core.info(`Verification Result:\n${capturedOutput}`);
+            verified = capturedOutput.toLowerCase().includes('valid') && !capturedOutput.toLowerCase().includes('invalid');
+            core.setOutput('verified', verified.toString());
+            core.setOutput('verification-result', capturedOutput);
+        }
+        // Write to output file if specified
+        const outputFile = core.getInput('attest-output');
+        if ((0, utils_1.isValidStr)(outputFile)) {
+            try {
+                await fs.writeFile(outputFile, capturedOutput, 'utf-8');
+                core.info(`Verification output written to: ${outputFile}`);
+            }
+            catch (error) {
+                throw new Error(`Failed to write output file: ${error.message}`);
+            }
+        }
+        // Fail if not verified and fail-on-invalid is true
+        const failOnInvalid = core.getBooleanInput('attest-fail-on-invalid');
+        if (!verified && failOnInvalid) {
+            throw new Error('Attestation signature verification failed');
+        }
+        core.info(`✅ Attestation verification completed`);
+    }
+    catch (error) {
+        throw new Error(`Attestation verification failed: ${error.message}`);
+    }
+}
+
+
+/***/ }),
+
 /***/ 67824:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -233,6 +753,9 @@ const core = __importStar(__nccwpck_require__(37484));
 const cache = __importStar(__nccwpck_require__(5116));
 const tool_setup_1 = __nccwpck_require__(63082);
 const smctl_signing_1 = __nccwpck_require__(67469);
+const attest_sign_1 = __nccwpck_require__(2971);
+const attest_inspect_1 = __nccwpck_require__(63892);
+const attest_verify_1 = __nccwpck_require__(69011);
 const utils_1 = __nccwpck_require__(69277);
 const productName = "'DigiCert Software Trust Manager'";
 async function main() {
@@ -241,6 +764,28 @@ async function main() {
     if (utils_1.runnerType === utils_1.RunnerType.GITHUB_RUNNER && !core.getBooleanInput('use-github-caching-service')) {
         core.info(`ADD "use-github-caching-service: true" in your workflow for an optimized Software Trust Manager setup`);
     }
+    // Check for attestation modes first (these have priority as they're more specific)
+    const isAttestSign = core.getBooleanInput('attest-sign-mode');
+    const isAttestInspect = core.getBooleanInput('attest-inspect-mode');
+    const isAttestVerify = core.getBooleanInput('attest-verify-mode');
+    if (isAttestSign || isAttestInspect || isAttestVerify) {
+        core.info(`Setting up ${productName} for attestation mode.`);
+        const smctl = await (0, tool_setup_1.setupTool)(tool_setup_1.SMCTL);
+        if (isAttestSign) {
+            core.info('Attestation Mode: Creating attestation (attest-sign)');
+            await (0, attest_sign_1.attestSign)(smctl);
+        }
+        else if (isAttestInspect) {
+            core.info('Attestation Mode: Inspecting attestation (attest-inspect)');
+            await (0, attest_inspect_1.attestInspect)(smctl);
+        }
+        else if (isAttestVerify) {
+            core.info('Attestation Mode: Verifying attestation (attest-verify)');
+            await (0, attest_verify_1.attestVerify)(smctl);
+        }
+        return;
+    }
+    // Original signing logic
     const isSimpleSigning = core.getBooleanInput('simple-signing-mode');
     if (isSimpleSigning) {
         core.info(`Setting up ${productName} for simple-signing mode.`);
@@ -67351,24 +67896,6 @@ exports.UserDelegationKeyCredential = UserDelegationKeyCredential;
 
 /***/ }),
 
-/***/ 83627:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.KnownEncryptionAlgorithmType = void 0;
-/** Known values of {@link EncryptionAlgorithmType} that the service accepts. */
-var KnownEncryptionAlgorithmType;
-(function (KnownEncryptionAlgorithmType) {
-    KnownEncryptionAlgorithmType["AES256"] = "AES256";
-})(KnownEncryptionAlgorithmType || (exports.KnownEncryptionAlgorithmType = KnownEncryptionAlgorithmType = {}));
-//# sourceMappingURL=generatedModels.js.map
-
-/***/ }),
-
 /***/ 30247:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -77641,132 +78168,6 @@ exports.listType = {
 
 /***/ }),
 
-/***/ 56635:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-/*
- * Copyright (c) Microsoft Corporation.
- * Licensed under the MIT License.
- *
- * Code generated by Microsoft (R) AutoRest Code Generator.
- * Changes may cause incorrect behavior and will be lost if the code is regenerated.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-//# sourceMappingURL=appendBlob.js.map
-
-/***/ }),
-
-/***/ 68355:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-/*
- * Copyright (c) Microsoft Corporation.
- * Licensed under the MIT License.
- *
- * Code generated by Microsoft (R) AutoRest Code Generator.
- * Changes may cause incorrect behavior and will be lost if the code is regenerated.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-//# sourceMappingURL=blob.js.map
-
-/***/ }),
-
-/***/ 17188:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-/*
- * Copyright (c) Microsoft Corporation.
- * Licensed under the MIT License.
- *
- * Code generated by Microsoft (R) AutoRest Code Generator.
- * Changes may cause incorrect behavior and will be lost if the code is regenerated.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-//# sourceMappingURL=blockBlob.js.map
-
-/***/ }),
-
-/***/ 15337:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-/*
- * Copyright (c) Microsoft Corporation.
- * Licensed under the MIT License.
- *
- * Code generated by Microsoft (R) AutoRest Code Generator.
- * Changes may cause incorrect behavior and will be lost if the code is regenerated.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-//# sourceMappingURL=container.js.map
-
-/***/ }),
-
-/***/ 82354:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-/*
- * Copyright (c) Microsoft Corporation.
- * Licensed under the MIT License.
- *
- * Code generated by Microsoft (R) AutoRest Code Generator.
- * Changes may cause incorrect behavior and will be lost if the code is regenerated.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const tslib_1 = __nccwpck_require__(61860);
-tslib_1.__exportStar(__nccwpck_require__(26865), exports);
-tslib_1.__exportStar(__nccwpck_require__(15337), exports);
-tslib_1.__exportStar(__nccwpck_require__(68355), exports);
-tslib_1.__exportStar(__nccwpck_require__(14400), exports);
-tslib_1.__exportStar(__nccwpck_require__(56635), exports);
-tslib_1.__exportStar(__nccwpck_require__(17188), exports);
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
-/***/ 14400:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-/*
- * Copyright (c) Microsoft Corporation.
- * Licensed under the MIT License.
- *
- * Code generated by Microsoft (R) AutoRest Code Generator.
- * Changes may cause incorrect behavior and will be lost if the code is regenerated.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-//# sourceMappingURL=pageBlob.js.map
-
-/***/ }),
-
-/***/ 26865:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-/*
- * Copyright (c) Microsoft Corporation.
- * Licensed under the MIT License.
- *
- * Code generated by Microsoft (R) AutoRest Code Generator.
- * Changes may cause incorrect behavior and will be lost if the code is regenerated.
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-//# sourceMappingURL=service.js.map
-
-/***/ }),
-
 /***/ 40535:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -80972,6 +81373,132 @@ const filterBlobsOperationSpec = {
 
 /***/ }),
 
+/***/ 56635:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the MIT License.
+ *
+ * Code generated by Microsoft (R) AutoRest Code Generator.
+ * Changes may cause incorrect behavior and will be lost if the code is regenerated.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=appendBlob.js.map
+
+/***/ }),
+
+/***/ 68355:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the MIT License.
+ *
+ * Code generated by Microsoft (R) AutoRest Code Generator.
+ * Changes may cause incorrect behavior and will be lost if the code is regenerated.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=blob.js.map
+
+/***/ }),
+
+/***/ 17188:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the MIT License.
+ *
+ * Code generated by Microsoft (R) AutoRest Code Generator.
+ * Changes may cause incorrect behavior and will be lost if the code is regenerated.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=blockBlob.js.map
+
+/***/ }),
+
+/***/ 15337:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the MIT License.
+ *
+ * Code generated by Microsoft (R) AutoRest Code Generator.
+ * Changes may cause incorrect behavior and will be lost if the code is regenerated.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=container.js.map
+
+/***/ }),
+
+/***/ 82354:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the MIT License.
+ *
+ * Code generated by Microsoft (R) AutoRest Code Generator.
+ * Changes may cause incorrect behavior and will be lost if the code is regenerated.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const tslib_1 = __nccwpck_require__(61860);
+tslib_1.__exportStar(__nccwpck_require__(26865), exports);
+tslib_1.__exportStar(__nccwpck_require__(15337), exports);
+tslib_1.__exportStar(__nccwpck_require__(68355), exports);
+tslib_1.__exportStar(__nccwpck_require__(14400), exports);
+tslib_1.__exportStar(__nccwpck_require__(56635), exports);
+tslib_1.__exportStar(__nccwpck_require__(17188), exports);
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 14400:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the MIT License.
+ *
+ * Code generated by Microsoft (R) AutoRest Code Generator.
+ * Changes may cause incorrect behavior and will be lost if the code is regenerated.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=pageBlob.js.map
+
+/***/ }),
+
+/***/ 26865:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the MIT License.
+ *
+ * Code generated by Microsoft (R) AutoRest Code Generator.
+ * Changes may cause incorrect behavior and will be lost if the code is regenerated.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=service.js.map
+
+/***/ }),
+
 /***/ 5313:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -81042,6 +81569,24 @@ class StorageClient extends coreHttpCompat.ExtendedServiceClient {
 }
 exports.StorageClient = StorageClient;
 //# sourceMappingURL=storageClient.js.map
+
+/***/ }),
+
+/***/ 83627:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.KnownEncryptionAlgorithmType = void 0;
+/** Known values of {@link EncryptionAlgorithmType} that the service accepts. */
+var KnownEncryptionAlgorithmType;
+(function (KnownEncryptionAlgorithmType) {
+    KnownEncryptionAlgorithmType["AES256"] = "AES256";
+})(KnownEncryptionAlgorithmType || (exports.KnownEncryptionAlgorithmType = KnownEncryptionAlgorithmType = {}));
+//# sourceMappingURL=generatedModels.js.map
 
 /***/ }),
 

@@ -81,9 +81,109 @@ inputs:
       Sign multiple files in a single operation. This action only works when you are simple signing.
     required: false
     default: 'false'
+
+  # ATTESTATION MODE INPUTS
+  attest-sign-mode:
+    description: |
+      Create an in-toto DSSE attestation by signing evidence. Requires keypair-alias and attestation-input.
+    required: false
+    default: 'false'
+  attestation-input:
+    description: |
+      Path to evidence file (SBOM, scan results, SARIF, etc.) for attestation signing.
+      Only used when attest-sign-mode is true.
+    required: false
+  attest-type:
+    description: |
+      Predicate type for attestation (auto-detected if omitted):
+      cyclonedx, spdx, sarif, slsa-provenance, vex, verification-receipt, scan-results
+    required: false
+  attest-subject-name:
+    description: |
+      Artifact name for attestation subject (defaults to input filename).
+    required: false
+  attest-subject-digest:
+    description: |
+      Pre-computed SHA-256 hex digest of subject artifact.
+    required: false
+  attest-output:
+    description: |
+      Output file path for attestation (defaults to attestation.json).
+      Used by attest-sign-mode, attest-inspect-mode, and attest-verify-mode.
+    required: false
+
+  attest-inspect-mode:
+    description: |
+      Decode and display DSSE attestation without verification (offline operation).
+      Requires attestation-file.
+    required: false
+    default: 'false'
+  attestation-file:
+    description: |
+      Path to DSSE attestation envelope JSON file.
+      Used by attest-inspect-mode and attest-verify-mode.
+    required: false
+  attest-output-format:
+    description: |
+      Output format for attest-inspect-mode: json (default), text, or summary.
+    required: false
+    default: 'json'
+
+  attest-verify-mode:
+    description: |
+      Verify DSSE attestation signature (offline operation).
+      Requires attestation-file and either attest-public-key or attest-certificate.
+    required: false
+    default: 'false'
+  attest-public-key:
+    description: |
+      Path to PEM-encoded public key for attestation verification.
+      Mutually exclusive with attest-certificate.
+    required: false
+  attest-certificate:
+    description: |
+      Path to PEM-encoded certificate for attestation verification.
+      Mutually exclusive with attest-public-key.
+    required: false
+  attest-ca-bundle:
+    description: |
+      Path to PEM-encoded CA bundle for certificate chain validation.
+      Only used with attest-certificate.
+    required: false
+  attest-predicate-type-filter:
+    description: |
+      Filter: only verify if predicate matches this type (attest-verify-mode only).
+    required: false
+  attest-subject-digest-filter:
+    description: |
+      Filter: only verify if subject matches this digest (attest-verify-mode only).
+    required: false
+  attest-fail-on-invalid:
+    description: |
+      Exit with non-zero if signature verification fails (default: true).
+      Only used by attest-verify-mode.
+    required: false
+    default: 'true'
+
 outputs:
   PKCS11_CONFIG:
     description: 'Absolute path to the generated pkcs11Properties.cfg file used for PKCS#11 configuration'
+  attestation-file:
+    description: 'Path to generated attestation file (attest-sign-mode output)'
+  attestation-content:
+    description: 'DSSE envelope JSON content as string (attest-sign-mode or attest-inspect-mode output)'
+  predicate-type:
+    description: 'Predicate type from attestation (attest-inspect-mode or attest-verify-mode output)'
+  subject-name:
+    description: 'Subject artifact name (attest-inspect-mode or attest-verify-mode output)'
+  subject-digest:
+    description: 'Subject artifact SHA-256 digest (attest-inspect-mode or attest-verify-mode output)'
+  signature-keyid:
+    description: 'Key ID of signature (attest-inspect-mode or attest-verify-mode output)'
+  verified:
+    description: 'Verification result: true or false (attest-verify-mode output only)'
+  verification-result:
+    description: 'Full verification result as JSON string (attest-verify-mode output)'
 runs:
   using: node24
   main: 'dist/index.js'
