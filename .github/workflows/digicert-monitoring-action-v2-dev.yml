@@ -1,0 +1,46 @@
+name: DigiCert Monitoring Action(v2-dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Release name override (defaults to tag value when empty)"
+        required: false
+        default: ""
+      tag:
+        description: "Git tag for the release (required when with-release=true, e.g. v1.0.0)"
+        required: false
+        default: ""
+      with-release:
+        description: "Create a RELEASED release (true) or BUILD_ONLY (false)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+  security-events: read
+
+jobs:
+  scan:
+    name: Code Monitoring (v2 smctl)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Validate inputs
+        if: ${{ inputs['with-release'] && inputs.tag == '' }}
+        run: |
+          echo "tag input is required when with-release is true" >&2
+          exit 1
+      - uses: digicert/digicert-code-monitoring-action@v2-dev
+        with:
+          host: "https://one.stage.az.digicert.net"
+          api-key: ${{ secrets.STAGEAZ_API_KEY }}
+          name: ${{ inputs.name != '' && inputs.name || (inputs.tag != '' && inputs.tag || 'test-action') }}
+          tag: ${{ inputs.tag }}
+          with-release: ${{ inputs['with-release'] }}
+          digicert-cdn: "https://pki-downloads.digicert.com/stm/snapshot/stmclients"
+          use-github-caching-service: "true"
+          use-binary-sha256-checksum: "true"
